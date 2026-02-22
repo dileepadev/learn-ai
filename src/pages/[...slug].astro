@@ -19,14 +19,16 @@ const { Content } = await render(entry);
     <div class="flex flex-col lg:flex-row gap-12">
       <aside class="hidden lg:block w-64 shrink-0">
         <nav class="sticky top-24">
-          <h3 class="font-semibold text-white mb-4">Navigation</h3>
-          <ul class="space-y-3 text-sm text-zinc-400">
+          <h3 class="font-semibold text-zinc-900 dark:text-white mb-4">
+            Navigation
+          </h3>
+          <ul class="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
             {
               allDocs.map((doc) => (
                 <li>
                   <a
                     href={`/${doc.id}`}
-                    class={`transition-colors ${entry.id === doc.id ? "text-emerald-400 font-semibold" : "hover:text-white"}`}
+                    class={`transition-colors ${entry.id === doc.id ? "text-emerald-500 dark:text-emerald-400 font-semibold" : "hover:text-zinc-900 dark:hover:text-white"}`}
                   >
                     {doc.data.title}
                   </a>
@@ -38,7 +40,7 @@ const { Content } = await render(entry);
       </aside>
 
       <article
-        class="prose prose-invert prose-zinc prose-a:text-emerald-400 hover:prose-a:text-emerald-300 max-w-3xl mx-auto lg:mx-0"
+        class="prose dark:prose-invert prose-zinc prose-a:text-emerald-500 dark:prose-a:text-emerald-400 hover:prose-a:text-emerald-600 dark:hover:prose-a:text-emerald-300 max-w-3xl mx-auto lg:mx-0"
       >
         <h1>{entry.data.title}</h1>
         <Content />

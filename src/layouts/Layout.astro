@@ -13,7 +13,7 @@ const {
 ---
 
 <!doctype html>
-<html lang="en" class="scroll-smooth dark">
+<html lang="en" class="scroll-smooth">
   <head>
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
@@ -21,18 +21,39 @@ const {
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
+    <script is:inline>
+      const theme = (() => {
+        if (
+          typeof localStorage !== "undefined" &&
+          localStorage.getItem("theme")
+        ) {
+          return localStorage.getItem("theme");
+        }
+        if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+          return "dark";
+        }
+        return "light";
+      })();
+
+      if (theme === "light") {
+        document.documentElement.classList.remove("dark");
+      } else {
+        document.documentElement.classList.add("dark");
+      }
+      window.localStorage.setItem("theme", theme);
+    </script>
   </head>
   <body
-    class="bg-zinc-950 text-zinc-300 antialiased selection:bg-emerald-500/30 selection:text-emerald-200"
+    class="bg-white dark:bg-zinc-950 text-zinc-600 dark:text-zinc-300 antialiased selection:bg-emerald-500/30 selection:text-emerald-200"
   >
     <div class="flex min-h-screen flex-col">
       <header
-        class="sticky top-0 z-40 w-full backdrop-blur-md flex-none transition-colors duration-500 lg:z-50 border-b border-white/10 bg-zinc-950/80"
+        class="sticky top-0 z-40 w-full backdrop-blur-md flex-none transition-colors duration-500 lg:z-50 border-b border-zinc-200 dark:border-white/10 bg-white/80 dark:bg-zinc-950/80"
       >
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div class="py-4 flex items-center justify-between">
             <a
-              class="flex items-center gap-2 text-xl font-bold tracking-tight text-white"
+              class="flex items-center gap-2 text-xl font-bold tracking-tight text-zinc-900 dark:text-white"
               href="/"
             >
               <div
@@ -54,35 +75,65 @@ const {
               Learn<span class="text-emerald-400">AI</span>
             </a>
             <div class="hidden md:flex items-center gap-8">
-              <nav class="text-sm font-medium text-zinc-400">
+              <nav class="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                 <ul class="flex space-x-8">
                   <li>
                     <a
                       href="/machine-learning"
-                      class="hover:text-white transition-colors"
+                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Machine Learning</a
                     >
                   </li>
                   <li>
                     <a
                       href="/deep-learning"
-                      class="hover:text-white transition-colors"
+                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Deep Learning</a
                     >
                   </li>
                   <li>
                     <a
                       href="/generative-ai"
-                      class="hover:text-white transition-colors"
+                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Generative AI</a
                     >
                   </li>
                 </ul>
               </nav>
-              <div class="flex items-center border-l border-white/10 pl-8">
+              <div
+                class="flex items-center border-l border-zinc-200 dark:border-white/10 pl-8 gap-4"
+              >
+                <button
+                  id="theme-toggle"
+                  type="button"
+                  class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
+                  aria-label="Toggle dark mode"
+                >
+                  <svg
+                    id="theme-toggle-dark-icon"
+                    class="hidden w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    xmlns="http://www.w3.org/2000/svg"
+                    ><path
+                      d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"
+                    ></path></svg
+                  >
+                  <svg
+                    id="theme-toggle-light-icon"
+                    class="hidden w-5 h-5"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                    xmlns="http://www.w3.org/2000/svg"
+                    ><path
+                      d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"></path></svg
+                  >
+                </button>
                 <a
                   href="https://github.com/dileepadev/learn-ai"
-                  class="text-zinc-400 hover:text-white transition-colors"
+                  class="text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors"
                 >
                   <span class="sr-only">GitHub</span>
                   <svg
@@ -105,14 +156,62 @@ const {
         <slot />
       </main>
 
-      <footer class="border-t border-white/10 mt-auto bg-zinc-950">
+      <footer
+        class="border-t border-zinc-200 dark:border-white/10 mt-auto bg-white dark:bg-zinc-950"
+      >
         <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-          <p class="text-center text-sm text-zinc-500">
+          <p class="text-center text-sm text-zinc-500 dark:text-zinc-400">
             &copy; {new Date().getFullYear()} Learn AI. Built with Astro and Tailwind
             CSS.
           </p>
         </div>
       </footer>
     </div>
+    <script>
+      const themeToggleDarkIcon = document.getElementById(
+        "theme-toggle-dark-icon",
+      );
+      const themeToggleLightIcon = document.getElementById(
+        "theme-toggle-light-icon",
+      );
+      const themeToggleBtn = document.getElementById("theme-toggle");
+
+      // Change the icons inside the button based on previous settings
+      if (
+        localStorage.getItem("theme") === "dark" ||
+        (!("theme" in localStorage) &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches)
+      ) {
+        themeToggleLightIcon?.classList.remove("hidden");
+      } else {
+        themeToggleDarkIcon?.classList.remove("hidden");
+      }
+
+      themeToggleBtn?.addEventListener("click", function () {
+        // toggle icons inside button
+        themeToggleDarkIcon?.classList.toggle("hidden");
+        themeToggleLightIcon?.classList.toggle("hidden");
+
+        // if set via local storage previously
+        if (localStorage.getItem("theme")) {
+          if (localStorage.getItem("theme") === "light") {
+            document.documentElement.classList.add("dark");
+            localStorage.setItem("theme", "dark");
+          } else {
+            document.documentElement.classList.remove("dark");
+            localStorage.setItem("theme", "light");
+          }
+          // if NOT set via local storage previously
+        } else {
+          if (document.documentElement.classList.contains("dark")) {
+            document.documentElement.classList.remove("dark");
+            localStorage.setItem("theme", "light");
+          } else {
+            document.documentElement.classList.add("dark");
+            localStorage.setItem("theme", "dark");
+          }
+        }
+      });
+    </script>
   </body>
 </html>
