@@ -1,40 +1,37 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
-template: splash # Remove or comment out this line to display the site sidebar on this page.
+title: Learn AI
+description: My personal journey and notes on learning Artificial Intelligence.
+template: splash
 hero:
-  tagline: Congrats on setting up a new Starlight project!
+  tagline: A comprehensive collection of notes, tutorials, and resources on my journey to mastering Artificial Intelligence.
   image:
     file: ../../assets/houston.webp
   actions:
-    - text: Example Guide
+    - text: Start Learning
       link: /guides/example/
       icon: right-arrow
-    - text: Read the Starlight docs
-      link: https://starlight.astro.build
+      variant: primary
+    - text: View on GitHub
+      link: https://github.com/dileepadev/learn-ai
       icon: external
       variant: minimal
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Next steps
+## Explore Topics
 
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
+	<Card title="Machine Learning" icon="setting">
+		Dive into the fundamentals of Machine Learning, including supervised and unsupervised learning algorithms, model evaluation, and feature engineering.
 	</Card>
-	<Card title="Change page layout" icon="document">
-		Delete `template: splash` in `src/content/docs/index.mdx` to display a
-		sidebar on this page.
+	<Card title="Deep Learning" icon="rocket">
+		Explore neural networks, backpropagation, CNNs for image processing, and RNNs for sequence data.
 	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
+	<Card title="Generative AI" icon="star">
+		Learn about Large Language Models (LLMs), Transformers, Diffusion models, and how to build applications using them.
 	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
+	<Card title="Tools & Frameworks" icon="laptop">
+		Get hands-on with popular AI tools and frameworks like PyTorch, TensorFlow, Scikit-learn, and Hugging Face.
 	</Card>
 </CardGrid>
