@@ -8,3 +8,4 @@ Welcome to the Introduction to AI section. This is the perfect place to start if
 ## Topics
 
 - [What is AI?](/introduction/what-is-ai)
+- [History of AI](/introduction/history-of-ai)
