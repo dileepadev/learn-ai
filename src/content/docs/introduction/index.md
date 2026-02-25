@@ -11,3 +11,4 @@ Welcome to the Introduction to AI section. This is the perfect place to start if
 - [History of AI](/introduction/history-of-ai)
 - [Types of AI](/introduction/types-of-ai)
 - [AI vs. Machine Learning vs. Deep Learning](/introduction/ai-ml-dl)
+- [How AI Works](/introduction/how-ai-works)
