@@ -9,6 +9,11 @@ Welcome to the Machine Learning section. Here you will find notes and tutorials 
 
 Machine learning (ML) is a subset of artificial intelligence (AI) that focuses on building systems that can learn from and make decisions based on data. It enables computers to improve their performance on tasks without being explicitly programmed.
 
+## Topics
+
+- [Types of Machine Learning](/machine-learning/types-of-machine-learning)
+- [Supervised Learning](/machine-learning/supervised-learning)
+
 ### Key Concepts
 
 - **Supervised Learning**: Training models on labeled data.
