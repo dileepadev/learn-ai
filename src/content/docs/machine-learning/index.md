@@ -13,6 +13,7 @@ Machine learning (ML) is a subset of artificial intelligence (AI) that focuses o
 
 - [Types of Machine Learning](/machine-learning/types-of-machine-learning)
 - [Supervised Learning](/machine-learning/supervised-learning)
+- [Unsupervised Learning](/machine-learning/unsupervised-learning)
 
 ### Key Concepts
 
