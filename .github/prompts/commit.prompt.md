@@ -49,7 +49,7 @@ Follow this format strictly:
   ```zsh
   git commit -m "feat(ui): Add new navigation menu (refs #2)" -m "Detailed description of changes..."
   ```
-- **Current references**: `refs #2`
+- **Current references**: None. Do not include any issue or PR references unless explicitly mentioned in the code changes.
 
 ## Examples
 
