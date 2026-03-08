@@ -1,22 +1,60 @@
 ---
 agent: "agent"
-model: GPT-4o (copilot)
+model: GPT-5 mini (copilot)
 tools: ["execute", "read", "search"]
 description: "Generate a new commit message based on the provided code changes."
 ---
 
 Your goal is to generate the most appropriate and effective commit message based on the provided code changes.
 
-## Commit Message Guidelines
+## Commit Message Format
 
-Commit messages should be written clearly and consistently, following the project’s template.
+Follow this format strictly:
+`<type>(<scope>): <short message> (<optional issue references>) (<optional PR reference>)`
 
-- **Follow the commit message guidelines** outlined in the project's COMMIT_MESSAGE_GUIDELINES.md file.
-- **Provide the commit message as a Zsh-ready command**, so it can be run directly in the terminal.
-- **Check the changes first**: identify added, modified, or deleted files.
-- **Describe the changes according to the template**:
-  - For **multiple files**, summarize changes at a high level.
-  - For **a single file**, describe the exact modification.
-- Include **code snippets or terminal commands in Zsh format** where indicated by the template.
-- **Consistency is key**: ensure every commit follows the template to keep project history clear and uniform.
-- Current references for the commit message: N/A
+`<optional longer description>`
+
+### Type (`<type>`)
+
+- `feat`: A new feature or enhancement.
+- `fix`: A bug fix.
+- `docs`: Documentation updates.
+- `style`: Formatting, missing semi colons, etc; no logic change.
+- `refactor`: Refactoring code without changing external behavior.
+- `perf`: Performance improvements.
+- `test`: Adding or modifying tests.
+- `chore`: Routine tasks, maintenance, or tooling changes.
+
+### Scope (`<scope>`)
+
+- Optional but recommended (e.g., `repo`, `config`, `auth`, `api`, `ui`, `db`).
+
+### Short Message (`<short message>`)
+
+- Use imperative mood (e.g., "Add" not "Added").
+- Capitalize first letter.
+- No period at the end.
+- Keep under 50 characters.
+
+### References
+
+- Issues: `(refs #2)` or `(fixes #2)`.
+- PRs: `(#123)` at the end of the header.
+
+## Instructions
+
+- **Check the changes first**: Identify added, modified, or deleted files using `git diff --cached`.
+- **Provide the final output as a Zsh-ready command**: You MUST wrap the `git commit` command in a Zsh code block so it can be copied and pasted directly into the terminal.
+- **Example output format**:
+  ```zsh
+  git commit -m "feat(ui): Add new navigation menu (refs #2)" -m "Detailed description of changes..."
+  ```
+- **Current references**: `refs #2`
+
+## Examples
+
+- `feat(ui): Add new navigation menu (refs #2)`
+- `fix(api): Resolve memory leak in user service (#45)`
+- `chore(repo): Update dependencies`
+
+Ensure the commit message is professional, concise, and follows these guidelines exactly.
