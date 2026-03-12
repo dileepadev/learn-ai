@@ -8,3 +8,4 @@ Welcome to the Deep Learning section. Here you will find notes and tutorials on 
 ## Topics
 
 - [Introduction to Neural Networks](/deep-learning/neural-networks)
+- [Backpropagation Basics](/deep-learning/backpropagation-basics)
