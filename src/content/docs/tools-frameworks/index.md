@@ -7,11 +7,23 @@ description: A guide to popular AI tools and frameworks.
 
 Artificial Intelligence (AI) development has been revolutionized by the availability of powerful tools and frameworks. These resources simplify the process of building, training, and deploying AI models. In this article, we will explore some of the most popular tools and frameworks used in the AI industry.
 
+## Topics
+
+- [PyTorch vs. TensorFlow](/tools-frameworks/pytorch-vs-tensorflow)
+- [Introduction to Hugging Face](/tools-frameworks/introduction-to-hugging-face)
+- [Introduction to LangChain](/tools-frameworks/introduction-to-langchain)
+- [Introduction to LlamaIndex](/tools-frameworks/introduction-to-llamaindex)
+- [Introduction to AutoGen](/tools-frameworks/introduction-to-autogen)
+- [Vector Databases Introduction](/tools-frameworks/vector-databases-introduction)
+- [Getting Started with Scikit-learn](/tools-frameworks/getting-started-with-scikit-learn)
+- [Building RAG with LlamaIndex](/tools-frameworks/building-rag-with-llamaindex)
+- [Practical Qdrant Guide](/tools-frameworks/practical-qdrant-guide)
+
 ## PyTorch
 
 PyTorch is an open-source machine learning library developed by Facebook. It is widely used for deep learning applications and provides a flexible platform for building and training neural networks. PyTorch is known for its dynamic computation graph, which allows developers to modify the network architecture on the fly.
 
-### Key Features
+### PyTorch Key Features
 
 - Dynamic computation graph
 - Strong GPU acceleration
@@ -21,7 +33,7 @@ PyTorch is an open-source machine learning library developed by Facebook. It is 
 
 TensorFlow, developed by Google, is another popular open-source library for machine learning and deep learning. It is designed for both research and production environments, offering tools for building and deploying machine learning models at scale.
 
-### Key Features
+### TensorFlow Key Features
 
 - Static computation graph for optimized performance
 - TensorFlow Lite for mobile and embedded devices
@@ -31,7 +43,7 @@ TensorFlow, developed by Google, is another popular open-source library for mach
 
 Scikit-learn is a Python library for machine learning built on top of NumPy, SciPy, and matplotlib. It is ideal for beginners and provides simple and efficient tools for data mining and data analysis.
 
-### Key Features
+### Scikit-learn Key Features
 
 - Preprocessing utilities
 - A wide range of supervised and unsupervised learning algorithms
@@ -41,7 +53,7 @@ Scikit-learn is a Python library for machine learning built on top of NumPy, Sci
 
 Hugging Face is a leader in natural language processing (NLP) and provides a library called `transformers` for working with state-of-the-art models like BERT, GPT, and T5. It also offers tools for fine-tuning and deploying models.
 
-### Key Features
+### Hugging Face Key Features
 
 - Pretrained models for NLP tasks
 - Easy-to-use APIs for fine-tuning
@@ -51,7 +63,7 @@ Hugging Face is a leader in natural language processing (NLP) and provides a lib
 
 The Open Neural Network Exchange (ONNX) is an open format for representing machine learning models. It enables interoperability between different frameworks, allowing developers to train a model in one framework and deploy it in another.
 
-### Key Features
+### ONNX Key Features
 
 - Framework interoperability
 - Optimized runtime for inference

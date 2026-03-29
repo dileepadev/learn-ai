@@ -9,3 +9,9 @@ Welcome to the Deep Learning section. Here you will find notes and tutorials on 
 
 - [Introduction to Neural Networks](/deep-learning/neural-networks)
 - [Backpropagation Basics](/deep-learning/backpropagation-basics)
+- [Convolutional Neural Networks (CNNs)](/deep-learning/convolutional-neural-networks)
+- [Recurrent Neural Networks (RNNs)](/deep-learning/recurrent-neural-networks)
+- [Attention Mechanisms](/deep-learning/attention-mechanisms-explained)
+- [Autoencoders](/deep-learning/autoencoders)
+- [Generative Adversarial Networks (GANs)](/deep-learning/introduction-to-gans)
+- [Graph Neural Networks (GNNs)](/deep-learning/graph-neural-networks)

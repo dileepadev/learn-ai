@@ -15,7 +15,14 @@ Machine learning (ML) is a subset of artificial intelligence (AI) that focuses o
 - [Supervised Learning](/machine-learning/supervised-learning)
 - [Unsupervised Learning](/machine-learning/unsupervised-learning)
 - [Reinforcement Learning](/machine-learning/reinforcement-learning)
-- [Reinforcement Learning Basics](/machine-learning/reinforcement-learning-basics)
+- [NLP Fundamentals](/machine-learning/nlp-fundamentals)
+- [MLOps Introduction](/machine-learning/introduction-to-mlops)
+- [Model Deployment](/machine-learning/model-deployment-and-serving)
+- [Dataset Curation](/machine-learning/dataset-curation-best-practices)
+- [Evaluation Metrics](/machine-learning/evaluation-metrics)
+- [Model Distillation](/machine-learning/model-distillation-explained)
+- [Synthetic Data Generation](/machine-learning/synthetic-data-generation)
+- [Federated Learning](/machine-learning/introduction-to-federated-learning)
 
 ### Key Concepts
 
