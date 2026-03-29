@@ -9,8 +9,6 @@ Welcome to the Generative AI section. Here you will find notes and tutorials on 
 
 - [Introduction to Generative AI](/generative-ai/introduction-to-gen-ai)
 - [Transformer Architecture](/generative-ai/transformer-architecture)
-- [Transformer Architecture Basics](/generative-ai/transformer-architecture-basics)
-- [Transformer Architecture Deep Dive](/generative-ai/transformer-architecture-deep-dive)
 - [Tokenization in LLMs](/generative-ai/tokenization-in-llms)
-- [Getting Started with RAG](/generative-ai/getting-started-with-rag)
-- [Fine-Tuning LLMs](/generative-ai/fine-tuning-llms)
+- [Retrieval-Augmented Generation (RAG) Explained](/rag-explained)
+- [Large Language Model (LLM) Fine-Tuning](/llm-fine-tuning)

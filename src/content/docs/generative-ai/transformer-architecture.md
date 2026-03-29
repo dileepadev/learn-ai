@@ -1,40 +1,57 @@
 ---
-title: Understanding Transformer Architecture
-description: The breakthrough architecture behind modern Large Language Models.
+title: "Understanding Transformer Architecture"
+description: "A deep dive into the breakthrough architecture behind modern Large Language Models like GPT and BERT."
 ---
 
-The Transformer architecture, first introduced in the 2017 paper "Attention Is All You Need," revolutionized the field of Natural Language Processing (NLP) and is the foundation for models like GPT, BERT, and T5.
+The Transformer architecture, introduced in the seminal 2017 paper "Attention Is All You Need," revolutionized Natural Language Processing (NLP). It is the foundational technology powering modern Large Language Models (LLMs) such as GPT-4, BERT, T5, and Claude.
 
 ## Why Transformers?
 
-Before Transformers, Recurrent Neural Networks (RNNs) and Long Short-Term Memory (LSTM) networks were the go-to for sequential data like text. However, they had limitations:
+Before Transformers, models like Recurrent Neural Networks (RNNs) and Long Short-Term Memory (LSTM) networks were the standard for sequential data. However, they had two major flaws:
 
-1. **Sequential Processing:** They process words one by one, making them slow to train on large datasets.
-2. **Vanishing Gradients:** They struggled to remember information from the beginning of long sentences.
+1. **Sequential Processing:** They processed text word-by-word, which made them slow and difficult to parallelize on modern hardware (GPUs).
+2. **Long-Range Dependencies:** They struggled to "remember" or connect information from the beginning of a long sentence by the time they reached the end (the vanishing gradient problem).
 
-Transformers solved these issues by processing entire sequences of data in parallel and using a revolutionary mechanism called **Attention**.
+Transformers solved these issues by processing entire sequences in parallel and using a revolutionary mechanism called **Self-Attention**.
 
-## Key Components of a Transformer
+## Core Components of a Transformer
 
-### 1. Self-Attention Mechanism
+A transformer block typically consists of several key layers that work together to process and refine information.
 
-Self-attention allows the model to look at other words in a sentence to gain a better understanding of a specific word's context. For example, in the sentence "The bank was closed because it was a holiday," the word "it" refers to "the bank." Self-attention helps the model make this connection.
+### 1. Tokenization and Embeddings
 
-### 2. Multi-Head Attention
+Text is first split into smaller units called **tokens**. Each token is mapped to a high-dimensional vector called an **embedding**, which represents its initial numerical meaning.
 
-Instead of performing self-attention once, the model does it multiple times in parallel ("heads"). Each head can focus on different aspects of the relationships between words (e.g., one head might focus on grammar, while another focuses on meaning).
+### 2. Positional Encoding
 
-### 3. Positional Encoding
+Since Transformers process all tokens simultaneously, they don't inherently know the order of words. **Positional Encoding** adds unique signals to the embeddings to tell the model where each word sits in the sequence.
 
-Since Transformers process words in parallel, they don't inherently know the order of the words. Positional encoding adds information about the position of each word in the sequence, allowing the model to understand word order and structure.
+### 3. Self-Attention Mechanism
 
-### 4. Encoder-Decoder Structure
+The "heart" of the Transformer. Self-attention allows each token in a sequence to "look" at every other token to determine which ones are most relevant to its own meaning.
 
-- **Encoder:** Processes the input sequence and creates a numerical representation (embedding) that captures its meaning.
-- **Decoder:** Uses the encoder's output and previously generated words to produce the final output sequence (e.g., a translation or a summary).
+The mathematical representation of attention is:
+$$ \text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^{T}}{\sqrt{d_k}}\right)V $$
+Where **Q (Query)** is what a token is looking for, **K (Key)** is what a token offers, and **V (Value)** is the actual information the token holds.
 
-*Note: Many modern models, like GPT, use only the Decoder part of the architecture.*
+### 4. Multi-Head Attention
 
-## Impact of Transformers
+Instead of one massive attention calculation, the model runs several in parallel ("heads"). Each head can focus on different relationships—one might focus on grammar, another on entities, and another on long-distance context.
 
-The parallelizable nature of Transformers allowed researchers to train much larger models on much larger datasets, leading to the "Large Language Model" era we see today. They have since been applied successfully beyond text, including in computer vision (Vision Transformers) and audio processing.
+### 5. Feed-Forward Networks
+
+After the attention layers mix information across tokens, a feed-forward neural network processes each token individually to create even richer feature representations.
+
+### 6. Residual Connections and Layer Normalization
+
+These help stabilize the training process, allowing models to be hundreds of layers deep without performance degrading.
+
+## Common Architecture Variants
+
+- **Encoder-Only (e.g., BERT):** Excellent for understanding tasks like sentiment analysis or named entity recognition.
+- **Decoder-Only (e.g., GPT):** Optimized for generating text, one token at a time.
+- **Encoder-Decoder (e.g., T5, BART):** Ideal for sequence-to-sequence tasks like translation or summarization.
+
+## The Impact of Transformers
+
+The parallelizable nature of Transformers enabled the training of models on massive datasets, leading to the emergence of "Generalized" AI that can perform a wide variety of tasks without specific retraining. Beyond text, they have successfully expanded into images (Vision Transformers) and audio processing.
