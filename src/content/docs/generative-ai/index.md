@@ -26,3 +26,11 @@ Welcome to the Generative AI section. Here you will find notes and tutorials on 
 - [LLM Fine-Tuning](/llm-fine-tuning)
 - [Speculative Decoding](/generative-ai/speculative-decoding)
 - [Flash Attention](/generative-ai/flash-attention-explained)
+
+## Agentic Workflows
+
+- [Agentic Reasoning Frameworks](/generative-ai/agentic-reasoning-frameworks)
+- [Agentic Tools Integration](/generative-ai/agentic-tools-integration)
+- [Agentic Ethics and Safety](/generative-ai/agentic-ethics-and-safety)
+- [Agentic Memory and Persistence](/generative-ai/agentic-memory-and-persistence)
+- [Agentic Orchestration (Multi-Agent)](/generative-ai/agentic-orchestration-multi-agent)
