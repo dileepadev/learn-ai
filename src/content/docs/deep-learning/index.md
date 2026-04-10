@@ -15,3 +15,6 @@ Welcome to the Deep Learning section. Here you will find notes and tutorials on 
 - [Autoencoders](/deep-learning/autoencoders)
 - [Generative Adversarial Networks (GANs)](/deep-learning/introduction-to-gans)
 - [Graph Neural Networks (GNNs)](/deep-learning/graph-neural-networks)
+- [Neural Architecture Search (NAS)](/deep-learning/neural-architecture-search)
+- [Physics-Informed Neural Networks (PINNs)](/deep-learning/physics-informed-neural-networks)
+- [Neural Radiance Fields (NeRFs)](/deep-learning/neural-radiance-fields-nerf)
