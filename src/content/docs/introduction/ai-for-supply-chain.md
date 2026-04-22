@@ -118,6 +118,7 @@ Supply chains are continuously hit by disruptions — a factory fire, port strik
 A **supply chain digital twin** is a real-time computational model of the physical supply chain — continuously updated with operational data and capable of running simulations to test decisions before they are executed.
 
 Digital twins enable:
+
 - **What-if analysis**: "What happens to service levels if our largest supplier delivers 2 weeks late?"
 - **Risk stress-testing**: Simulating rare but high-impact scenarios (e.g., a major port closure) to evaluate resilience.
 - **Continuous optimization**: Running optimization algorithms against the live model to adjust decisions as conditions change.
