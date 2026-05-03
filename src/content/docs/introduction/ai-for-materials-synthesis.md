@@ -16,6 +16,7 @@ The bottleneck is not creativity but scale. The space of chemically possible mat
 Most AI materials work focuses on *property prediction* — given a structure, what are its electronic, mechanical, or thermal properties? This is already transformative. But property prediction without synthesis prediction is incomplete: a material is only useful if it can actually be made.
 
 Synthesis prediction is harder than property prediction because:
+
 - **The synthesis space is larger than the structure space**: For any target structure, many synthesis routes exist, each with different starting materials, temperatures, atmospheres, and timescales.
 - **Synthesis is kinetically controlled**: What forms is not always what thermodynamics predicts — reaction kinetics, surface energies, and processing conditions determine which phase actually nucleates.
 - **Synthesis data is sparse and noisy**: Failed experiments are rarely published, and conditions are described inconsistently across papers.
@@ -36,6 +37,7 @@ Hundreds of thousands of synthesis procedures are buried in the scientific liter
 ### Structured Materials Databases
 
 Pre-existing databases provide curated property and synthesis data:
+
 - **ICSD** (Inorganic Crystal Structure Database): >200,000 experimentally determined crystal structures.
 - **Materials Project**: DFT-computed properties for >150,000 inorganic compounds.
 - **AFLOW**: High-throughput DFT data for >3.4 million compounds.
@@ -54,6 +56,7 @@ Robotic synthesis platforms generate structured, reproducible experimental data 
 Predicting which precursors and conditions will yield a target inorganic compound is a classification/regression problem:
 
 **Inputs**:
+
 - Target material composition and crystal structure.
 - Precursor combination (candidate reactants).
 - Proposed synthesis conditions (temperature, atmosphere, time).
@@ -159,6 +162,7 @@ Where $f$ is the fidelity level, $w(f)$ is the information weight, and $c(f)$ is
 ### Battery Materials
 
 AI accelerates discovery of solid-state electrolytes (high ionic conductivity, wide electrochemical window) and cathode materials (high energy density, long cycle life):
+
 - Graph neural network ionic conductivity predictors screen millions of hypothetical lithium conductors.
 - Autonomous synthesis platforms optimize sintering conditions for garnet-type electrolytes.
 - LLM-guided literature extraction builds synthesis databases for battery active materials.
@@ -166,12 +170,14 @@ AI accelerates discovery of solid-state electrolytes (high ionic conductivity, w
 ### Catalysts
 
 Heterogeneous catalyst design (CO2 reduction, ammonia synthesis, methane activation) requires finding surface compositions and morphologies that balance activity, selectivity, and stability:
+
 - **OC20/OC22 datasets**: Large DFT databases of adsorption energies on catalytic surfaces, enabling ML interatomic potentials for fast catalyst screening.
 - **Active learning for catalyst composition**: Bayesian optimization identifies high-entropy alloy compositions with optimal adsorption free energies for ORR/HER catalysis.
 
 ### Thin-Film Solar Cells
 
 Optimizing perovskite solar cell composition, deposition conditions, and passivation layers involves vast multi-dimensional parameter spaces:
+
 - Gaussian process optimization of the Cs/MA/FA perovskite composition space achieved 18% efficiency in 20 experiments (vs. hundreds via grid search).
 - Computer vision characterization of film morphology feeds real-time feedback loops.
 
