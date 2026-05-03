@@ -14,6 +14,7 @@ Outlines works with most open-weight models (via `transformers`, `vLLM`, or `lla
 ## The Problem: LLM Outputs Are Unreliable
 
 LLMs generate text token-by-token, sampling from a probability distribution over the vocabulary. Without constraints, nothing prevents the model from:
+
 - Producing malformed JSON (missing brackets, unquoted strings).
 - Hallucinating field names not in the target schema.
 - Generating outputs that fail Pydantic validation.
@@ -33,6 +34,7 @@ Outlines uses **logit biasing** to constrain generation at each token step:
 4. Sampling proceeds over the constrained distribution — the model still chooses freely among valid tokens.
 
 This approach:
+
 - Guarantees structural validity (by construction, not heuristically).
 - Preserves the model's semantic choices within the constrained space.
 - Adds minimal latency (the FSA state is updated in $O(1)$ per token).
@@ -129,6 +131,7 @@ print(phone)  # "+1-800-555-1234" (guaranteed to match the regex)
 ```
 
 Regex constraints are useful for:
+
 - Phone numbers, zip codes, dates in specific formats
 - Product codes, identifiers, serial numbers
 - Simple yes/no or true/false extraction
@@ -194,6 +197,7 @@ print(expression)  # "(3+4)*2" or "3+4*2" — always valid arithmetic
 ```
 
 Grammar-constrained generation is particularly valuable for:
+
 - Generating valid SQL queries
 - Producing syntactically correct code in any language
 - Generating structured logical formulas
