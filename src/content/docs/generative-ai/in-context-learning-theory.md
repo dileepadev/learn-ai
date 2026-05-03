@@ -32,6 +32,7 @@ ICL improves dramatically with model scale. Small models (< 1B parameters) show 
 ### Sensitivity to Demonstration Format
 
 ICL is sensitive to:
+
 - **Label correctness**: Randomly shuffled labels hurt but do not eliminate ICL — suggesting the format matters more than the specific labels.
 - **Input distribution**: Demonstrations drawn from the task distribution help, even if labels are wrong.
 - **Ordering**: The order of demonstrations can affect accuracy by several percentage points.
@@ -52,6 +53,7 @@ One influential interpretation (Xie et al., 2021) frames ICL as implicit Bayesia
 $$p_\theta(y | x, C) \approx \int p(y | x, z) p(z | C) dz$$
 
 Where:
+
 - $C = \{(x_1, y_1), \ldots, (x_k, y_k)\}$ are the demonstrations.
 - $z$ is a latent concept or task variable.
 - $p(z | C)$ is the posterior over tasks given demonstrations.
@@ -59,6 +61,7 @@ Where:
 The model, through pretraining on a mixture of tasks, learns to approximate this Bayesian inference implicitly. The demonstrations update its implicit posterior over which task is being asked.
 
 **Key assumptions** of this view:
+
 1. Pretraining data is a mixture of many tasks, each described by a latent concept.
 2. Demonstrations are drawn i.i.d. from a single task.
 3. The model has learned to distinguish between tasks during pretraining.
@@ -98,6 +101,7 @@ The mutual information between demonstrations $C$ and the task label $y$ quantif
 $$I(y; C | x) = H(y | x) - H(y | x, C)$$
 
 ICL is valuable when demonstrations substantially reduce uncertainty about $y$. This is highest when:
+
 - The model has high prior uncertainty about the task.
 - Demonstrations are informative about the task structure.
 - The format of demonstrations precisely specifies the required transformation.
@@ -190,6 +194,7 @@ When labeled examples are unavailable, models can generate their own demonstrati
 ## ICL in Long-Context Models
 
 As context windows grow (1M+ tokens in Gemini 1.5, Claude 3), ICL scales to many more demonstrations. This enables:
+
 - **Many-shot ICL**: Hundreds to thousands of examples outperform few-shot, approaching fine-tuning accuracy for some tasks.
 - **In-context document understanding**: The entire document becomes the context, enabling ICL over book-length inputs.
 - **In-context retrieval augmentation**: Embedding retrieved passages directly in context as demonstration-like context.
