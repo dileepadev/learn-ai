@@ -213,6 +213,7 @@ Every SDE has a corresponding **probability flow ODE** with the same marginal di
 $$\frac{dx}{dt} = f(x, t) - \frac{1}{2} g(t)^2 \nabla_x \log p_t(x)$$
 
 The ODE enables:
+
 - Exact likelihood computation via the instantaneous change of variables formula
 - Deterministic encoding and decoding (interpolation in latent space)
 - Faster sampling (fewer function evaluations than stochastic sampling)
