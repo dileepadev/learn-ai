@@ -40,6 +40,7 @@ The Argo program deploys ~4,000 autonomous floats worldwide, each periodically p
 ### Automated Quality Control
 
 Neural classifiers trained on expert-labeled Argo data identify anomalous profiles caused by sensor malfunction, biofouling, or unusual oceanographic conditions. Multi-label classification assigns fine-grained quality flags:
+
 - Spike detection with LSTM-based sequence classifiers.
 - Density inversion detection using gradient-aware models.
 - Biogeochemical sensor drift correction via regression networks.
@@ -47,6 +48,7 @@ Neural classifiers trained on expert-labeled Argo data identify anomalous profil
 ### Adaptive Sampling with Reinforcement Learning
 
 Autonomous underwater vehicles (AUVs) and gliders can be steered adaptively to maximize scientific information gain. Reinforcement learning agents trained in ocean model simulations learn policies that:
+
 - Track frontal boundaries where phytoplankton blooms are highest.
 - Sample under-observed regions guided by uncertainty estimates from Gaussian process predictions.
 - Optimize energy efficiency against oceanographic sampling objectives.
@@ -94,6 +96,7 @@ Merging multi-sensor satellite imagery with deep learning reconstruction (as in 
 ### Harmful Algal Bloom Detection
 
 Harmful algal blooms (HABs) pose serious threats to fisheries and human health. Machine learning systems combine:
+
 - Ocean color imagery (bloom spatial extent).
 - Sea surface temperature (thermal stratification).
 - Wind and current data (bloom drift prediction).
@@ -159,6 +162,7 @@ Operational centers (Copernicus Marine Service, NOAA) provide ocean forecasts to
 ### Fisheries Stock Assessment
 
 Sustainable fisheries management requires accurate stock assessments — estimates of fish population abundance, distribution, and age structure. AI methods:
+
 - Acoustic backscatter classification distinguishes species echoes in fisheries acoustic surveys.
 - Deep learning applied to otolith (ear stone) images automates age determination of commercially important fish.
 - Species distribution models integrate environmental predictors with historical catch data to predict stock distributions under climate change.
