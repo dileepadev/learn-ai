@@ -34,11 +34,13 @@ A radiologist can inspect whether the model correctly identified "irregular bord
 ### Notation
 
 Let:
+
 - $x \in \mathcal{X}$ — raw input (e.g., image, tabular row)
 - $c \in \{0,1\}^k$ — binary concept annotations ($k$ concepts)
 - $y \in \mathcal{Y}$ — final task label
 
 A CBM consists of:
+
 1. **Concept predictor** $g: \mathcal{X} \to [0,1]^k$, predicting each concept probability.
 2. **Task predictor** $f: [0,1]^k \to \mathcal{Y}$, predicting the label from concept scores.
 
@@ -65,6 +67,7 @@ First train $g$ to convergence on concept labels, then freeze $g$ and train $f$ 
 ### Independent CBM
 
 Train $g$ and $f$ completely independently:
+
 - Train $g$ to predict concepts from inputs.
 - Train $f$ to predict labels from **ground-truth** concepts.
 - At test time, compose $f \circ g$.
@@ -87,6 +90,7 @@ The most powerful feature of CBMs is the ability to **intervene** on concept pre
 ### Intervention Policy
 
 Not all concepts are equally valuable to intervene on. The most impactful concepts to correct are those with:
+
 - High uncertainty in the concept predictor.
 - High influence on the task prediction (measured by the task head's sensitivity $\partial f / \partial c_j$).
 
