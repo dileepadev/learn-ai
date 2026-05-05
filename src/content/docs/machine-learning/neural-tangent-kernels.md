@@ -185,6 +185,7 @@ The **Condition Number** $\kappa = \lambda_{\max} / \lambda_{\min}$ of the NTK m
 ### Understanding BatchNorm and Skip Connections
 
 NTK analysis reveals why batch normalization and residual connections help training:
+
 - BatchNorm normalizes the NTK spectrum, reducing condition number.
 - Residual connections add an identity contribution to each layer's NTK term, preventing collapse of the smallest eigenvalues.
 
@@ -193,6 +194,7 @@ NTK analysis reveals why batch normalization and residual connections help train
 ## Finite-Width Corrections
 
 The infinite-width NTK is an approximation. For finite width $n$, the corrections scale as $O(1/n)$. These finite-width corrections include:
+
 - **Feature learning**: The kernel changes as training progresses.
 - **Fluctuations**: Stochastic noise from random initialization has $O(1/\sqrt{n})$ effects on predictions.
 - **Kernel corrections**: The empirical NTK deviates from the limiting kernel by $O(1/\sqrt{n})$.
