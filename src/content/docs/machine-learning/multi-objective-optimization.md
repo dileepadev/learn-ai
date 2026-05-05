@@ -180,6 +180,7 @@ Extends EHVI to noisy evaluations and batch selection (selecting multiple candid
 ### Hyperparameter Optimization (AutoML)
 
 Multi-objective hyperparameter optimization jointly optimizes:
+
 - **Accuracy vs. training time**: Avoid over-spending compute for marginal gains.
 - **Accuracy vs. model size**: Find the smallest model achieving target accuracy.
 - **Accuracy vs. inference latency**: Critical for edge deployment.
@@ -189,6 +190,7 @@ Tools like **Ax** (Meta), **SMAC3**, and **Ray Tune** support multi-objective op
 ### Neural Architecture Search (NAS)
 
 NSGA-II and NSGA-III are widely applied in hardware-aware NAS to find architectures on the Pareto front of:
+
 - Test accuracy (maximize)
 - FLOPs (minimize)
 - Parameter count (minimize)
@@ -199,6 +201,7 @@ NSGA-II and NSGA-III are widely applied in hardware-aware NAS to find architectu
 ### Fairness-Accuracy Trade-offs
 
 Fairness constraints create natural trade-offs:
+
 - **Accuracy vs. demographic parity**: Equalizing positive prediction rates across groups often reduces overall accuracy.
 - **Accuracy vs. equalized odds**: Equalizing TPR/FPR across groups may require sacrificing accuracy.
 
@@ -211,6 +214,7 @@ In multi-task settings, each task's loss is an objective. MOO methods find model
 ### LLM Alignment (RLHF)
 
 RLHF involves trade-offs between:
+
 - Helpfulness (high reward)
 - Harmlessness (low policy violation)
 - KL divergence from the base model (stay close to pretrained behavior)
