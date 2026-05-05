@@ -117,6 +117,7 @@ distances, indices = index.search(xq, k=5)
 `IndexIVFPQ` combines inverted file indexing with **product quantization** (PQ) for memory-efficient storage. PQ compresses each vector into a short code by partitioning the vector space into subspaces and quantizing each subspace independently.
 
 For a $d$-dimensional vector with $m$ subquantizers each with $k^*$ centroids:
+
 - **Storage**: $m \cdot \log_2(k^*) / 8$ bytes per vector (vs. $4d$ bytes for float32).
 - **Compression ratio**: Typically 8–64×.
 
