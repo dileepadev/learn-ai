@@ -14,6 +14,7 @@ The project's defining characteristic is its commitment to **zero dependencies a
 ## Why llama.cpp Matters
 
 Before llama.cpp, running large language models required:
+
 - Powerful NVIDIA GPUs with large VRAM (40–80 GB for 70B models).
 - Python environments with heavy frameworks (PyTorch, Transformers).
 - Cloud infrastructure for anything production-grade.
@@ -70,6 +71,7 @@ CMAKE_ARGS="-DLLAMA_METAL=on" pip install llama-cpp-python
 llama.cpp uses the **GGUF** (GGML Universal Format) file format for storing quantized models. GGUF is a binary format designed for efficient memory-mapped loading, storing model weights, tokenizer data, and metadata in a single self-contained file.
 
 Model filenames encode the quantization level:
+
 - `model-Q4_K_M.gguf` — 4-bit, K-quants, medium quality
 - `model-Q5_K_M.gguf` — 5-bit, K-quants, medium quality
 - `model-Q8_0.gguf` — 8-bit, best quality (near float16)
@@ -288,6 +290,7 @@ python convert_hf_to_gguf.py \
 ## Ecosystem
 
 llama.cpp powers many popular local AI applications:
+
 - **Ollama**: User-friendly wrapper around llama.cpp with model management.
 - **LM Studio**: Desktop GUI for running and chatting with local models.
 - **GPT4All**: Cross-platform desktop application for private, local AI.
