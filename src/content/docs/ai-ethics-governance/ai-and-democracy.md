@@ -55,6 +55,7 @@ Detection accuracy on held-out test sets reaches 95%+, but real-world deployment
 LLMs can produce thousands of unique, human-quality persuasive articles or social media posts targeting specific demographic niches. Research has demonstrated that GPT-4-class models produce political content rated as more persuasive than trained human writers on certain topics.
 
 **Computational propaganda characteristics:**
+
 - High volume, low cost per post
 - Rapid adaptation to trending news cycles
 - Persona consistency across platforms (coordinated inauthentic behavior)
@@ -172,6 +173,7 @@ AI can facilitate structured deliberation at scale:
 ### Election Administration
 
 AI aids election officials in:
+
 - **Voter roll maintenance**: identifying duplicate registrations, deceased voters, outdated addresses
 - **Ballot processing**: automated signature verification for mail ballots (contested for accuracy disparities by demographic group)
 - **Disinformation monitoring**: tracking false claims about polling hours, locations, or eligibility
