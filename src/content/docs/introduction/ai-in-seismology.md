@@ -10,6 +10,7 @@ Seismology has been transformed by deep learning — replacing rule-based signal
 ## Traditional vs. AI-Based Seismic Processing
 
 Classical seismology relies on:
+
 - **STA/LTA detectors**: short-term/long-term average ratio for event detection
 - **AIC pickers**: Akaike Information Criterion for P- and S-wave arrival times
 - **Template matching**: cross-correlation against known event waveforms
