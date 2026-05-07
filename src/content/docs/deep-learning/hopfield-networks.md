@@ -65,6 +65,7 @@ The MHN update rule is **mathematically identical** to scaled dot-product attent
 $$\text{Attn}(Q, K, V) = \text{softmax}\!\left(\frac{QK^T}{\sqrt{d}}\right)V$$
 
 Identifying:
+
 - $\boldsymbol{\xi} \leftrightarrow Q$ (query / pattern to retrieve)
 - $X^T \leftrightarrow K$ (stored patterns / keys)
 - $X \leftrightarrow V$ (retrieved values)
