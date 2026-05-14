@@ -1,294 +1,324 @@
 ---
-title: Introduction to TRL
-description: A practical guide to TRL (Transformer Reinforcement Learning), Hugging Face's library for fine-tuning language models with RLHF, DPO, PPO, and reward modeling.
+title: "Introduction to TRL: Transformer Reinforcement Learning"
+description: "Learn how to use TRL and TRLX for fine-tuning LLMs with RLHF, DPO, and other reinforcement learning techniques from the Hugging Face ecosystem."
 ---
 
-# Introduction to TRL
+TRL (Transformer Reinforcement Learning) is Hugging Face's library for fine-tuning large language models with reinforcement learning. It provides components for the full RLHF pipeline and simpler alignment techniques like DPO.
 
-**TRL** (Transformer Reinforcement Learning) is Hugging Face's open-source library for fine-tuning large language models with reinforcement learning from human feedback (RLHF) and related alignment techniques. It provides production-ready trainers for supervised fine-tuning (SFT), reward modeling, PPO, DPO, GRPO, and more — all built on top of `transformers` and `accelerate`.
+## Why Use TRL?
 
-## Why TRL?
-
-Training aligned language models involves multiple stages:
-
-1. **Supervised Fine-Tuning (SFT)**: teach the model to follow instructions
-2. **Reward Modeling (RM)**: learn a scalar reward from human preference data
-3. **RL Fine-Tuning (PPO / GRPO)**: optimize the policy against the reward model
-4. **Direct Alignment (DPO / KTO)**: skip the RL loop and align directly from preferences
-
-TRL implements all of these with a unified, trainer-based API compatible with any `transformers` model.
+TRL simplifies the complex RLHF pipeline:
+- **PPO Trainer**: Full RLHF with Proximal Policy Optimization.
+- **DPOTrainer**: Direct Preference Optimization without the complexity of PPO.
+- **CPO Trainer**: Combined SFT and preference optimization.
+- **Reward Trainer**: Train reward models from preference data.
 
 ## Installation
 
 ```bash
-pip install trl
-# With optional extras
-pip install "trl[peft]"          # LoRA/QLoRA support
-pip install "trl[diffusers]"     # Diffusion model RLHF
+pip install trl[chatbot]  # For chatbot fine-tuning
+pip install trl           # Core library
+pip install trl[benchmarking]  # For evaluation
 ```
 
-## Supervised Fine-Tuning with SFTTrainer
+## Reward Model Training
 
-The `SFTTrainer` wraps `Trainer` to handle chat template formatting, packing, and LoRA integration automatically.
+First, train a reward model from preference data:
 
 ```python
-from datasets import load_dataset
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from trl import SFTTrainer, SFTConfig
+from trl import RewardTrainer
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-model_id = "meta-llama/Llama-3.2-1B"
-model = AutoModelForCausalLM.from_pretrained(model_id)
-tokenizer = AutoTokenizer.from_pretrained(model_id)
-
-dataset = load_dataset("trl-lib/tldr", split="train")
-
-training_args = SFTConfig(
-    output_dir="sft-model",
-    num_train_epochs=3,
-    per_device_train_batch_size=4,
-    gradient_accumulation_steps=8,
-    learning_rate=2e-5,
-    fp16=True,
-    logging_steps=50,
-    save_steps=500,
+# Load model and tokenizer
+model = AutoModelForSequenceClassification.from_pretrained(
+    "gpt2",
+    num_labels=1,  # Reward score
 )
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
 
-trainer = SFTTrainer(
+# Create a dummy dataset
+from datasets import Dataset
+import pandas as pd
+
+data = {
+    "prompt": [
+        "What is the capital of France?",
+        "Explain quantum mechanics",
+    ],
+    "chosen": [
+        "Paris is the capital of France.",
+        "Quantum mechanics is a fundamental theory...",
+    ],
+    "rejected": [
+        "I don't know where France is.",
+        "Quantum stuff is really confusing.",
+    ],
+}
+dataset = Dataset.from_pandas(pd.DataFrame(data))
+
+# Initialize trainer
+trainer = RewardTrainer(
     model=model,
     tokenizer=tokenizer,
-    args=training_args,
     train_dataset=dataset,
+    per_device_train_batch_size=4,
 )
+
 trainer.train()
-trainer.save_model("sft-model")
 ```
 
-### Using Chat Templates
+## Supervised Fine-Tuning (SFT)
 
-For instruction datasets in conversational format:
+Before RLHF, fine-tune on high-quality demonstrations:
 
 ```python
-def format_chat(example):
-    messages = [
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": example["prompt"]},
-        {"role": "assistant", "content": example["completion"]},
-    ]
-    return {"text": tokenizer.apply_chat_template(messages, tokenize=False)}
+from trl import SFTTrainer
+from datasets import Dataset
 
-dataset = dataset.map(format_chat)
+# Format data as conversations
+train_data = [
+    {"text": "Human: What is Python?\n\nAssistant: Python is a programming language."},
+    {"text": "Human: Explain photosynthesis\n\nAssistant: Photosynthesis is..."},
+]
+
+dataset = Dataset.from_pandas({"text": train_data})
+
+trainer = SFTTrainer(
+    model="gpt2",
+    train_dataset=dataset,
+    dataset_text_field="text",
+    max_seq_length=512,
+    packing=True,  # Pack multiple examples
+)
+
+trainer.train()
 ```
 
-### QLoRA Fine-Tuning
+## Full RLHF with PPO
+
+The complete RLHF pipeline with PPO optimization:
 
 ```python
-from peft import LoraConfig
-from transformers import BitsAndBytesConfig
+from trl import PPOConfig, PPOTrainer
+from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
-bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,
-    bnb_4bit_quant_type="nf4",
-    bnb_4bit_compute_dtype=torch.bfloat16,
-)
-model = AutoModelForCausalLM.from_pretrained(model_id, quantization_config=bnb_config)
+# Initialize models
+model = AutoModelForCausalLM.from_pretrained("gpt2")
+ref_model = AutoModelForCausalLM.from_pretrained("gpt2")
+reward_model = AutoModelForSequenceClassification.from_pretrained("reward_model")
 
-peft_config = LoraConfig(
-    r=16,
-    lora_alpha=32,
-    target_modules=["q_proj", "v_proj"],
-    lora_dropout=0.05,
-    bias="none",
-    task_type="CAUSAL_LM",
-)
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+tokenizer.pad_token = tokenizer.eos_token
 
-trainer = SFTTrainer(
-    model=model,
-    tokenizer=tokenizer,
-    args=training_args,
-    train_dataset=dataset,
-    peft_config=peft_config,
-)
-trainer.train()
-```
-
-## Reward Modeling with RewardTrainer
-
-A reward model is a sequence classifier that outputs a scalar given a prompt + response.
-
-```python
-from trl import RewardTrainer, RewardConfig
-from transformers import AutoModelForSequenceClassification
-
-reward_model = AutoModelForSequenceClassification.from_pretrained(
-    "sft-model", num_labels=1
-)
-
-# Dataset must have "chosen" and "rejected" columns
-reward_dataset = load_dataset("trl-lib/ultrafeedback_binarized", split="train")
-
-reward_config = RewardConfig(
-    output_dir="reward-model",
-    per_device_train_batch_size=4,
-    num_train_epochs=1,
+# Configure PPO
+config = PPOConfig(
     learning_rate=1e-5,
-    gradient_checkpointing=True,
-)
-
-reward_trainer = RewardTrainer(
-    model=reward_model,
-    tokenizer=tokenizer,
-    args=reward_config,
-    train_dataset=reward_dataset,
-)
-reward_trainer.train()
-```
-
-## PPO Training with PPOTrainer
-
-PPO fine-tunes the SFT model to maximize reward while maintaining proximity to the SFT policy via a KL penalty.
-
-```python
-from trl import PPOTrainer, PPOConfig, AutoModelForCausalLMWithValueHead
-from transformers import pipeline
-
-ppo_config = PPOConfig(
-    model_name="sft-model",
-    learning_rate=1.41e-5,
     batch_size=16,
     mini_batch_size=4,
-    gradient_accumulation_steps=1,
-    optimize_cuda_cache=True,
     ppo_epochs=4,
-    kl_penalty="kl",
-    init_kl_coef=0.2,
-    adap_kl_ctrl=True,
+    clip_range=0.2,
+    target_kl=0.1,
 )
 
-model = AutoModelForCausalLMWithValueHead.from_pretrained("sft-model")
-ref_model = AutoModelForCausalLMWithValueHead.from_pretrained("sft-model")
-reward_pipe = pipeline("text-classification", model="reward-model")
+# Initialize trainer
+ppo_trainer = PPOTrainer(
+    config=config,
+    model=model,
+    ref_model=ref_model,
+    reward_model=reward_model,
+    tokenizer=tokenizer,
+)
 
-ppo_trainer = PPOTrainer(ppo_config, model, ref_model, tokenizer)
+# Training loop
+batch_size = 16
+prompts = ["What is AI?", "Explain machine learning", ...]
 
-for batch in ppo_trainer.dataloader:
-    query_tensors = batch["input_ids"]
-
+for epoch in range(10):
     # Generate responses
-    response_tensors = ppo_trainer.generate(query_tensors, max_new_tokens=100)
-
-    # Score with reward model
-    texts = tokenizer.batch_decode(response_tensors)
-    rewards = [torch.tensor(r["score"]) for r in reward_pipe(texts)]
-
-    # PPO step
-    stats = ppo_trainer.step(query_tensors, response_tensors, rewards)
-    ppo_trainer.log_stats(stats, batch, rewards)
+    query_tensors = tokenizer(prompts, return_tensors="pt", padding=True)
+    
+    response_tensors = []
+    for i in range(batch_size):
+        gen = model.generate(
+            query_tensors[i].unsqueeze(0),
+            max_new_tokens=100,
+            do_sample=True,
+            temperature=0.7,
+        )
+        response_tensors.append(gen.squeeze()[len(query_tensors[i]):])
+    
+    # Compute rewards
+    texts = [tokenizer.decode(r) for r in response_tensors]
+    reward_scores = [get_reward(text) for text in texts]
+    
+    # PPO update
+    ppo_trainer.step(query_tensors.input_ids, response_tensors, reward_scores)
+    
+    # Log metrics
+    ppo_trainer.log_stats()
 ```
 
 ## Direct Preference Optimization (DPO)
 
-DPO eliminates the RL loop by treating preference alignment as a classification problem on preference pairs.
+DPO simplifies RLHF by directly optimizing on preference pairs:
 
 ```python
-from trl import DPOTrainer, DPOConfig
+from trl import DPOTrainer
+from datasets import Dataset
 
-dpo_config = DPOConfig(
-    output_dir="dpo-model",
-    beta=0.1,                       # KL regularization strength
-    per_device_train_batch_size=2,
-    gradient_accumulation_steps=4,
-    num_train_epochs=2,
-    learning_rate=5e-7,
-    fp16=True,
-    loss_type="sigmoid",            # or "hinge", "ipo", "kto_pair"
-)
+# Preference data
+dpo_data = {
+    "prompt": ["What is AI?", "Explain quantum computing"],
+    "chosen": ["AI is artificial intelligence, systems that can..."],
+    "rejected": ["AI is like robots and stuff I think."],
+}
+dataset = Dataset.from_pandas(dpo_data)
 
-# Dataset: {"prompt": ..., "chosen": ..., "rejected": ...}
-dpo_dataset = load_dataset("trl-lib/ultrafeedback_binarized", split="train")
-
+# Initialize DPO trainer
 dpo_trainer = DPOTrainer(
-    model=model,
-    ref_model=None,   # automatically creates frozen reference copy
+    model=model,           # Policy model
+    ref_model=ref_model,   # Reference model (frozen)
+    beta=0.1,              # Temperature parameter
+    train_dataset=dataset,
     tokenizer=tokenizer,
-    args=dpo_config,
-    train_dataset=dpo_dataset,
+    per_device_train_batch_size=4,
+    max_steps=1000,
 )
+
 dpo_trainer.train()
 ```
 
-## GRPO — Group Relative Policy Optimization
+The DPO loss:
+```
+Loss = -E[(x,y_w,y_l) ~ D] [log σ( r_θ(x,y_w) - r_θ(x,y_l) - β log (π(y_w|x)/π_ref(y_w|x)) + β log(π(y_l|x)/π_ref(y_l|x)) )]
+```
 
-GRPO (used in DeepSeek-R1) eliminates the value/critic model by computing advantages from within-batch reward variation:
+## Comparative Preference Optimization (CPO)
+
+CPO combines SFT with preference optimization:
 
 ```python
-from trl import GRPOTrainer, GRPOConfig
+from trl import CPOTrainer
 
-def reward_fn(completions, **kwargs):
-    """Custom reward: prefer longer responses (toy example)."""
-    return [float(len(c)) / 200.0 for c in completions]
-
-grpo_config = GRPOConfig(
-    output_dir="grpo-model",
-    num_generations=8,   # G samples per prompt for relative reward
-    max_new_tokens=256,
-    learning_rate=5e-7,
-    per_device_train_batch_size=1,
-    gradient_accumulation_steps=8,
-)
-
-trainer = GRPOTrainer(
+cpo_trainer = CPOTrainer(
     model=model,
-    tokenizer=tokenizer,
-    reward_funcs=reward_fn,
-    args=grpo_config,
+    ref_model=ref_model,
     train_dataset=dataset,
+    tokenizer=tokenizer,
+    CPO_beta=0.1,      # Preference loss coefficient
+    SFT_beta=1.0,      # SFT loss coefficient
+    max_length=512,
 )
-trainer.train()
+
+cpo_trainer.train()
 ```
 
-## Algorithm Comparison
+## Training Configuration Options
 
-| Algorithm | RM Required | Reference Model | Online | Best For |
-|---|---|---|---|---|
-| SFT | ❌ | ❌ | ❌ | Instruction following |
-| PPO | ✅ | ✅ | ✅ | Complex reward shaping |
-| DPO | ❌ | ✅ | ❌ | Preference alignment |
-| GRPO | ❌ | ✅ | ✅ | Reasoning, math |
-| KTO | ❌ | ✅ | ❌ | Unpaired feedback |
-| ORPO | ❌ | ❌ | ❌ | Combined SFT + alignment |
-
-## Key Features
-
-### vLLM Integration for Fast Generation
+### PPO Configuration
 
 ```python
-grpo_config = GRPOConfig(
-    use_vllm=True,           # use vLLM for generation
-    vllm_device="cuda:1",    # separate GPU for inference
-    vllm_gpu_memory_utilization=0.5,
+config = PPOConfig(
+    # Learning
+    learning_rate=1e-5,
+    adam_eps=1e-8,
+    adam_beta1=0.9,
+    adam_beta2=0.99,
+    
+    # Batch sizes
+    batch_size=64,
+    mini_batch_size=16,
+    gradient_accumulation_steps=1,
+    
+    # PPO hyperparameters
+    clip_range=0.2,
+    clip_range_value=0.2,
+    target_kl=0.1,
+    ppo_epochs=4,
+    gamma=1.0,            # Reward discount
+    lam=0.95,             # GAE lambda
+    
+    # KL divergence
+    use_kl_loss=False,
+    kl_penalty="kl",      # "kl", "abs", "mse", "full"
+    kl_coefficient=0.2,
 )
 ```
 
-### Weights & Biases / TensorBoard Logging
+### DPO Configuration
 
-TRL integrates with Hugging Face `Trainer` reporting — set `report_to="wandb"` in any config.
+```python
+dpo_config = {
+    "beta": 0.1,              # Temperature (lower = more conservative)
+    "loss_type": "sigmoid",   # "sigmoid", "hinge", "ipo", "bowman"
+    "label_smoothing": 0.0,   # Label smoothing
+    "reverse_ratio": False,   # Whether to reverse preference direction
+    "f divergence type": "js_divergence",  # D_f divergence
+}
+```
 
-### Multi-GPU and DeepSpeed
+## Training Callbacks
+
+TRL integrates with Transformers callbacks:
+
+```python
+from transformers import EarlyStoppingCallback
+from trl import PPOTrainerCallback
+
+class MetricsCallback(TrainerCallback):
+    def on_step_end(self, args, state, control, model, **kwargs):
+        if state.global_step % 100 == 0:
+            logs = {
+                "policy_loss": get_policy_loss(),
+                "kl_div": get_kl_divergence(),
+                "reward": get_mean_reward(),
+            }
+            print(f"Step {state.global_step}: {logs}")
+```
+
+## Distributed Training
+
+TRL supports distributed training with Accelerate:
 
 ```bash
-accelerate launch --config_file deepspeed_z3.yaml train_dpo.py
+accelerate launch train_rlhf.py \
+    --multi_gpu \
+    --num_machines=2 \
+    --num_processes=8 \
+    --mixed_precision=bf16
 ```
 
-## Best Practices
+## Common Issues and Solutions
 
-- **SFT before alignment**: always start with instruction fine-tuning before DPO/PPO
-- **Small $\beta$ for DPO**: `beta=0.01`–`0.1` — larger values make alignment weaker
-- **Reference model matters**: for DPO, the reference should be the SFT checkpoint, not the base model
-- **KL monitoring**: watch `train/kl` in PPO — divergence > 20 signals instability
-- **Reward hacking**: PPO models can exploit reward model weaknesses — regularly evaluate on held-out human preferences
-- **Gradient checkpointing**: always enable for models >7B parameters
+### Training Instability
+```python
+# Reduce learning rate and add KL penalty
+config = PPOConfig(
+    learning_rate=1e-6,  # Much lower
+    use_kl_loss=True,
+    kl_penalty="kl",
+    kl_coefficient=0.1,
+)
+```
 
-## Summary
+### Reference Model Divergence
+```python
+# More frequent reference model updates or stronger KL penalty
+ref_model = copy.deepcopy(model)
+trainer = PPOTrainer(
+    ref_model=ref_model,
+    # ...
+)
+```
 
-TRL provides a complete, modular toolkit for aligning language models with human preferences. Starting from supervised fine-tuning through `SFTTrainer`, to reward modeling, PPO, DPO, and GRPO, the library handles distributed training, LoRA, vLLM generation, and evaluation out of the box. Its clean API and tight `transformers` integration make it the de facto standard for RLHF research and production alignment pipelines.
+### Reward Hacking
+```python
+# Add entropy bonus and diversity penalties
+def reward_with_entropy(reward, response):
+    base_reward = get_reward(response)
+    entropy_bonus = compute_entropy(response)
+    return base_reward + 0.01 * entropy_bonus
+```
+
+TRL provides the complete toolkit for RLHF-based alignment. Start with SFT, train a reward model, then use PPO or DPO to align the model to human preferences.
