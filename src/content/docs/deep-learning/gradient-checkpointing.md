@@ -1,158 +1,106 @@
 ---
-title: Gradient Checkpointing
-description: Learn how gradient checkpointing (activation recomputation) reduces GPU memory usage during deep network training by trading memory for compute — covering the memory-compute tradeoff, sublinear memory algorithms, selective checkpointing strategies, and PyTorch implementation patterns.
+title: "Gradient Checkpointing: Training Large Models on Limited Memory"
+description: "Understand how gradient checkpointing trades compute for memory, enabling training of models that would otherwise exceed GPU memory limits."
 ---
 
-Training deep neural networks requires storing all intermediate activations produced during the forward pass so that gradients can be computed during backpropagation. For a network with $L$ layers and batch size $B$, the naive approach stores $O(L \cdot B)$ activation tensors simultaneously in GPU memory. As models grow deeper and batch sizes larger, activation memory becomes the dominant constraint — often exceeding the memory required for the model weights themselves.
+Modern deep learning models have grown enormous. A 70B parameter model in full precision requires 280GB just to store weights — far exceeding any single GPU's memory. **Gradient checkpointing** is a memory optimization technique that makes training such models possible by strategically recomputing activations during the backward pass.
 
-**Gradient checkpointing** (also called **activation recomputation**) is a technique that reduces activation memory from $O(L)$ to $O(\sqrt{L})$ — or even less — by storing only a subset of activations during the forward pass and recomputing the rest during backpropagation. The cost is additional forward-pass compute; the gain is the ability to train much larger models or with much larger batch sizes on the same hardware.
+## The Memory Problem
 
-## The Memory-Compute Tradeoff in Backpropagation
+Training a neural network requires storing:
 
-Standard backpropagation proceeds in two phases:
+1. **Model weights**: The parameters being optimized.
+2. **Gradients**: Derivatives of the loss with respect to each weight.
+3. **Activations**: The outputs of each layer, needed to compute gradients during backpropagation.
+4. **Optimizer states**: Momentum and variance terms for adaptive optimizers like Adam.
 
-### Forward Pass
+For a model with L layers, activations from all L layers are stored simultaneously in naive implementation. For a model processing a batch of 8 on 2048-token sequences, these activations can easily exceed 100GB.
 
-Each layer $l$ computes its output $a_l = f_l(a_{l-1}, \theta_l)$ from the previous activation $a_{l-1}$ and layer parameters $\theta_l$. All activations $\{a_0, a_1, \ldots, a_L\}$ are retained in memory because they are needed to compute gradients.
+## How Checkpointing Works
 
-### Backward Pass
+Gradient checkpointing is based on a simple insight: not all activations need to be stored simultaneously. During the forward pass, select a subset of layers as **checkpoints**. Only the checkpoint activations are saved; intermediate activations are discarded.
 
-The gradient of the loss with respect to layer $l$'s parameters requires the activation $a_{l-1}$ (the input to layer $l$):
+During the backward pass, recompute the discarded activations on the fly by re-running the forward computation from the nearest checkpoint.
 
-$$\frac{\partial \mathcal{L}}{\partial \theta_l} = \frac{\partial \mathcal{L}}{\partial a_l} \cdot \frac{\partial f_l(a_{l-1}, \theta_l)}{\partial \theta_l}$$
+```
+Forward Pass:
+  Layer 1 → Layer 2 ✓ checkpoint → Layer 3 → Layer 4 ✓ checkpoint → Layer 5 → ... → Layer N
 
-Without activation storage, the backward pass would need to recompute every activation from scratch — which is correct but wastes compute. With full activation storage, memory scales as $O(L \cdot B \cdot d)$ where $d$ is the feature dimension, quickly exhausting GPU memory for deep models.
+Backward Pass:
+  ... → recompute 4 → checkpoint 4 → recompute 3 → checkpoint 2 → recompute 1
+```
 
-## Gradient Checkpointing Algorithm
+## Memory vs. Compute Tradeoff
 
-Gradient checkpointing divides the network into **segments** and saves only the activations at segment boundaries (the **checkpoints**). Within each segment, activations are discarded after the forward pass. During the backward pass, when a segment's internal activations are needed, they are **recomputed** from the nearest checkpoint.
+Checkpointing reduces memory but increases compute:
 
-For a network of $L$ layers divided into $k$ segments of $L/k$ layers each:
+| Strategy | Memory | Compute Overhead |
+|----------|--------|------------------|
+| No checkpointing | O(N × activation_size) | 1× |
+| Checkpoint every layer | O(activation_size) | ~1.5× |
+| Checkpoint every K layers | O(N/K × activation_size) | ~1 + 1/K × |
 
-- **Memory**: stores only $k$ checkpoint activations simultaneously → $O(k \cdot B \cdot d)$.
-- **Recompute cost**: each segment is run forward once during the initial forward pass and once more during backpropagation → $\approx 1 + \frac{L/k}{L} = 1 + 1/k$ forward passes.
+The sweet spot is usually checkpointing every 2–4 layers, achieving 3–5× memory reduction with 20–50% compute overhead.
 
-### Optimal Checkpoint Spacing
+## Implementation in PyTorch
 
-The total cost is:
-
-$$\text{Memory} = O(k \cdot d), \quad \text{Extra Compute} = O(L/k)$$
-
-Setting $k = \sqrt{L}$ minimizes the product (memory × compute overhead), giving:
-
-$$\text{Memory} = O(\sqrt{L} \cdot d), \quad \text{Extra Compute} \approx 33\%$$
-
-With $\sqrt{L}$ checkpoints, a 1,000-layer network's activation memory drops from $O(1000)$ to $O(32)$ — a 31× reduction — at the cost of roughly one-third more forward-pass compute. This is the standard "sublinear memory" result for gradient checkpointing.
-
-## PyTorch Implementation
-
-PyTorch provides `torch.utils.checkpoint.checkpoint` for segment-level gradient checkpointing:
+PyTorch provides gradient checkpointing via `torch.utils.checkpoint`:
 
 ```python
 import torch
+import torch.nn as nn
 from torch.utils.checkpoint import checkpoint
 
-class CheckpointedBlock(torch.nn.Module):
-    def __init__(self, layer):
+class CheckpointedModel(nn.Module):
+    def __init__(self, num_layers, hidden_size):
         super().__init__()
-        self.layer = layer
-
+        self.layers = nn.ModuleList([nn.Linear(hidden_size, hidden_size) for _ in range(num_layers)])
+    
     def forward(self, x):
-        # Recompute self.layer(x) during backward instead of storing activations
-        return checkpoint(self.layer, x, use_reentrant=False)
-
-# Apply to every Nth transformer block
-class TransformerWithCheckpointing(torch.nn.Module):
-    def __init__(self, blocks, checkpoint_every=2):
-        super().__init__()
-        self.blocks = torch.nn.ModuleList(blocks)
-        self.checkpoint_every = checkpoint_every
-
-    def forward(self, x):
-        for i, block in enumerate(self.blocks):
-            if i % self.checkpoint_every == 0:
-                x = checkpoint(block, x, use_reentrant=False)
-            else:
-                x = block(x)
+        # Checkpoint the first half of layers
+        for i, layer in enumerate(self.layers[:len(self.layers)//2]):
+            x = layer(x)
+            if i < len(self.layers)//2 - 1:
+                x = checkpoint(lambda _: layer(_), x)
+        
+        # Second half without checkpointing (smaller activations due to pooling, etc.)
+        for layer in self.layers[len(self.layers)//2:]:
+            x = layer(x)
         return x
 ```
 
-The `use_reentrant=False` flag is the recommended setting for modern PyTorch (2.0+) — it uses a more memory-efficient and composable implementation that handles complex autograd graphs correctly.
+## Memory Analysis
 
-### Hugging Face Transformers Integration
+Here's how memory changes for a 70B model on 8-GPU training:
 
-In Hugging Face Transformers, gradient checkpointing is enabled with a single call:
+| Configuration | Memory per GPU | Feasibility |
+|---------------|----------------|-------------|
+| No checkpointing, fp32 | 280GB weights alone | Impossible |
+| No checkpointing, fp16 | 140GB weights | Requires 8x80GB GPUs, still hits OOM |
+| Checkpointing, fp16, 8 GPUs | ~40GB active, 20GB params | Works on 8xA100 |
+| Checkpointing, fp16, 4 GPUs | ~60GB active, 40GB params | Works on 4xA100 with ZeRO |
 
-```python
-model.gradient_checkpointing_enable()
-```
+## Activation Checkpointing Strategies
 
-This applies checkpointing to every transformer block by default. Fine-grained control over which blocks to checkpoint is available through custom `gradient_checkpointing_kwargs`.
+### Uniform Checkpointing
+Checkpoint every N layers uniformly. Simple and works well when layers are similar in size.
 
-## Selective Checkpointing
+### Selective Checkpointing
+Checkpoint layers with large activation sizes (early layers in transformers often have larger activations due to longer sequences). The most memory-efficient approach but requires profiling.
 
-Not all layers benefit equally from checkpointing. Activation memory varies by operation type:
+### Gradient Checkpointing + ZeRO
+Gradient checkpointing combines powerfully with ZeRO optimizer sharding. ZeRO reduces parameter, gradient, and optimizer state memory across GPUs; checkpointing reduces activation memory. Together, they enable training models 10× larger than either technique alone.
 
-| Operation | Activation Memory | Recompute Cost |
-| --- | --- | --- |
-| Attention ($O(n^2 d)$ for sequence length $n$) | High | Medium |
-| FFN / MLP | Medium | Low |
-| LayerNorm | Low | Very low |
-| Embedding lookup | Low | Very low |
+## When to Use Checkpointing
 
-**Selective checkpointing** applies recomputation only to the highest-memory operations while retaining cheap-to-store activations. For transformer models, attention blocks — which store $O(n^2)$ activations for the attention weights — are the primary targets. Selectively checkpointing only attention blocks reduces memory nearly as much as full checkpointing with lower compute overhead.
+Use gradient checkpointing when:
+- You run out of memory during training.
+- You're limited to 1–4 GPUs and need to fit a larger model.
+- The 20–50% compute overhead is acceptable for your budget.
 
-### FlashAttention Integration
+Don't use checkpointing when:
+- You have abundant GPU memory (no need to pay the compute cost).
+- Training time is critical and compute is scarce.
+- The model is small enough to fit in memory without it.
 
-**FlashAttention** (Dao et al., 2022) is often described as an orthogonal optimization to gradient checkpointing, but they interact synergistically:
-
-- FlashAttention avoids materializing the $O(n^2)$ attention weight matrix by computing attention in tiled chunks — eliminating the largest single activation tensor.
-- With FlashAttention, the attention activation cost drops dramatically; the remaining memory bottleneck shifts to FFN activations, where gradient checkpointing is applied.
-
-The combination of FlashAttention + gradient checkpointing enables training with sequence lengths of 64K+ tokens on standard A100 GPUs.
-
-## Rematerialization in XLA and JAX
-
-In JAX and XLA (used by TPU training), gradient checkpointing is expressed through `jax.checkpoint` (formerly `jax.remat`):
-
-```python
-import jax
-from functools import partial
-
-@partial(jax.checkpoint, prevent_cse=False)
-def transformer_block(params, x):
-    return attention(params, x) + ffn(params, x)
-```
-
-JAX's compiler can automatically determine which activations to rematerialize based on the compute graph, without requiring manual specification of checkpoint boundaries. The `prevent_cse=False` flag allows common subexpression elimination across rematerialized computations, improving efficiency.
-
-## Memory Savings in Practice
-
-For LLaMA-3 8B (32 transformer layers) with sequence length 4096 and batch size 1 on A100 80GB:
-
-| Configuration | Activation Memory | Total Training Memory |
-| --- | --- | --- |
-| No checkpointing | ~18 GB | ~34 GB (exceeds A100) |
-| Full checkpointing | ~2.3 GB | ~18 GB |
-| Selective (attention only) | ~4 GB | ~20 GB |
-| No checkpointing + gradient accumulation (micro-batch=1) | ~4 GB | ~20 GB |
-
-Full checkpointing reduces activation memory by ~87% at the cost of ~33% more compute, making training feasible on a single 80GB GPU.
-
-## Interaction with Mixed Precision and Gradient Accumulation
-
-Gradient checkpointing interacts with other memory optimizations:
-
-- **Mixed precision (BF16/FP16)**: activations are stored in the training dtype (BF16). Recomputed activations are also in BF16, matching the original forward pass.
-- **Gradient accumulation**: reduces effective batch size per step. Combining gradient accumulation (to simulate large batches) with gradient checkpointing (to reduce activation memory) allows training with very large effective batch sizes on memory-constrained hardware.
-- **ZeRO / FSDP**: model parallel training splits parameters and gradients across GPUs. Gradient checkpointing is complementary — ZeRO/FSDP reduce parameter and optimizer state memory, while checkpointing reduces activation memory.
-
-## Limitations
-
-- **Throughput reduction**: the 33% compute overhead translates directly to slower training wall-clock time. For memory-abundant setups (e.g., A100 with small models), gradient checkpointing may not be worth the throughput cost.
-- **Non-determinism with dropout**: when activations within a checkpointed segment are recomputed, any stochastic operations (like dropout) produce different values than the original forward pass unless the random state is explicitly saved and restored. PyTorch's `checkpoint` handles this by saving and restoring the RNG state automatically.
-- **Custom autograd functions**: checkpointing does not work out of the box with `torch.autograd.Function` subclasses — these must explicitly support checkpointing via the `saved_tensors` mechanism.
-
-## Summary
-
-Gradient checkpointing reduces activation memory from $O(L)$ to $O(\sqrt{L})$ by recomputing discarded intermediate activations during backpropagation, enabling training of models that would otherwise exhaust GPU memory. With optimal checkpoint spacing at every $\sqrt{L}$ layers, the compute overhead is approximately 33% — a favorable tradeoff for most large-model training scenarios. PyTorch's `torch.utils.checkpoint`, Hugging Face's `gradient_checkpointing_enable()`, and JAX's `jax.checkpoint` provide production-ready implementations. Combined with FlashAttention (which eliminates $O(n^2)$ attention memory), gradient checkpointing enables training of billion-parameter models with long sequences on commodity GPU hardware.
+Gradient checkpointing is essential for anyone training or fine-tuning large models on limited hardware. The technique has enabled the entire ecosystem of open-source 70B+ models to be fine-tuned on consumer hardware.
