@@ -1,24 +1,40 @@
 ---
-title: Introduction to Speculative Decoding
-description: A performance optimization technique that uses a smaller "draft" model to speed up LLM inference.
+title: "Speculative Decoding: Faster LLM Inference"
+description: "Learn how speculative decoding uses a small draft model to accelerate large language model inference by 2-4x without changing output quality."
 ---
 
-Speculative Decoding is a powerful technique for speeding up Large Language Model (LLM) inference by predicting multiple tokens ahead with a lightweight model before validating them with the larger, primary model.
+Autoregressive generation is inherently sequential — each token depends on all previous tokens, making it hard to parallelize. **Speculative decoding** is a technique that breaks this bottleneck by using a small, fast model to draft multiple tokens at once, then verifying them in parallel with the large model.
 
-## Why Inference is Slow
+## The Problem with Autoregressive Decoding
 
-Modern LLMs like GPT-4 or Llama-3 are colossal. Conventional autoregressive decoding generates one token at a time, where each token requires a full forward pass through the massive model. This is often "memory-bound" and slower than the actual computation bottleneck.
+A 70B parameter model generating 500 tokens must run 500 sequential forward passes. Each pass is memory-bandwidth bound, not compute bound — the GPU spends most of its time loading weights, not doing math. This means the GPU is underutilized during generation.
 
 ## How Speculative Decoding Works
 
-1. **Drafting:** A small, fast "draft" model (e.g., Llama-7B for a Llama-70B target) generates several potential next tokens in parallel.
-2. **Verification:** The large "target" model performs a *single* forward pass on the entire draft sequence.
-3. **Acceptance:** The target model verifies which of the drafted tokens are correct according to its own probability distribution.
+1. **Draft Phase**: A small "draft model" (e.g., 7B) generates K candidate tokens autoregressively. This is fast because the model is small.
+2. **Verify Phase**: The large "target model" runs a single forward pass over the original context plus all K draft tokens simultaneously. This is efficient because it's one batched pass.
+3. **Accept/Reject**: The target model's probability distribution is compared to the draft model's. Tokens are accepted or rejected using a rejection sampling scheme that guarantees the output distribution matches the target model exactly.
+4. **Correction**: If a draft token is rejected, the target model's corrected token is used and drafting restarts from there.
 
-If the draft model is accurate, multiple tokens can be "accepted" in the time it would normally take to generate one.
+## Why It's Lossless
 
-## Key Benefits
+The acceptance/rejection criterion is mathematically designed so that the final token distribution is identical to what the target model would have produced alone. There is no quality tradeoff — only a speed improvement.
 
-- **Speed:** Can achieve 2-3x speedup with no loss in output quality.
-- **Efficiency:** Better utilization of GPU memory bandwidth.
-- **Compatibility:** Works with most Transformer-based LLMs without re-training.
+## Speedup in Practice
+
+Speedup depends on the **acceptance rate** — how often the draft model's tokens match the target model's distribution. For tasks where the draft model is reasonably accurate (e.g., code completion, factual recall), acceptance rates of 70–90% are common, yielding **2–4x throughput improvements**.
+
+## Variants
+
+- **Self-Speculative Decoding**: Uses early exit layers of the same model as the draft, avoiding the need for a separate model.
+- **Medusa**: Adds multiple decoding heads to the target model to predict several future tokens simultaneously.
+- **EAGLE**: Uses a lightweight feature-level draft model that conditions on the target model's hidden states for higher acceptance rates.
+
+## When to Use It
+
+Speculative decoding is most effective when:
+- Latency (time to complete a response) matters more than throughput.
+- A good draft model exists for your target model family.
+- The task has predictable token patterns (code, structured output, continuation).
+
+It's now a standard optimization in production inference stacks like vLLM and TGI.
