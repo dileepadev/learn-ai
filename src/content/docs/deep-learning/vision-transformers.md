@@ -1,58 +1,120 @@
 ---
-title: "Vision Transformers (ViT): Transformers for Computer Vision"
-description: "Learn how Vision Transformers apply the transformer architecture to image understanding, why they outperform CNNs at scale, and how modern variants like DINOv2 and SAM work."
+title: Vision Transformers (ViT)
+description: Explore how the Transformer architecture was adapted for computer vision — enabling state-of-the-art image recognition, segmentation, and visual representation learning.
 ---
 
-The transformer architecture, originally designed for text, has become the dominant approach for computer vision as well. **Vision Transformers (ViT)** treat images as sequences of patches and apply standard transformer attention — achieving state-of-the-art results across classification, detection, segmentation, and generation.
+**Vision Transformers (ViT)** brought the Transformer architecture — originally designed for NLP — directly to computer vision. Introduced by Dosovitskiy et al. (2020), ViT demonstrated that pure self-attention over image patches could match or surpass Convolutional Neural Networks (CNNs) on large-scale image recognition tasks.
 
-## The Core Idea: Images as Patch Sequences
+## From CNNs to Transformers
 
-A ViT processes an image by:
+CNNs dominated computer vision for nearly a decade due to their built-in **inductive biases**:
 
-1. **Patch extraction**: Divide the image into fixed-size patches (e.g., 16×16 pixels).
-2. **Linear projection**: Flatten each patch and project it to the model's embedding dimension.
-3. **Position embeddings**: Add learnable position embeddings to encode spatial location.
-4. **[CLS] token**: Prepend a learnable classification token whose final representation is used for classification.
-5. **Transformer encoder**: Apply standard multi-head self-attention and feed-forward layers.
+- **Translation equivariance** — detecting a feature in one location generalizes to others.
+- **Local connectivity** — convolutions operate on local patches.
 
-For a 224×224 image with 16×16 patches, this produces 196 patch tokens — a manageable sequence length for attention.
+These biases are useful when data is scarce, but they can become a bottleneck at scale. Transformers have far weaker inductive biases, making them harder to train with limited data — but when trained on large datasets, they learn better global representations.
 
-## Why ViT Outperforms CNNs at Scale
+## How ViT Works
 
-CNNs have strong inductive biases: translation equivariance and local connectivity. These biases help with small datasets but become constraints at scale.
+### Patch Embedding
 
-ViTs have weaker inductive biases — they must learn spatial relationships from data. This requires more data to train from scratch, but when pretrained on large datasets (ImageNet-21K, JFT-300M), ViTs outperform CNNs significantly.
+An input image of size $H \times W \times C$ is divided into $N$ non-overlapping patches of size $P \times P$:
 
-The key insight: **scale favors ViTs**. With enough data and compute, the flexibility of attention outweighs the efficiency of convolutional inductive biases.
+$$N = \frac{H \times W}{P^2}$$
 
-## Efficient ViT Variants
+Each patch is flattened and linearly projected into a $D$-dimensional embedding — analogous to token embeddings in NLP.
 
-The quadratic attention cost is a problem for high-resolution images. Solutions include:
+### Adding Positional Embeddings
 
-- **Swin Transformer**: Applies attention within local windows, with shifted windows for cross-window communication. Linear complexity in image size.
-- **DeiT**: Data-efficient ViT training using knowledge distillation from a CNN teacher, enabling strong performance without massive datasets.
-- **EfficientViT**: Hardware-aware design with multi-scale attention for efficient inference.
+Since Transformers are permutation-invariant, **positional embeddings** are added to the patch embeddings to encode spatial location. Standard ViT uses 1D learnable positional embeddings (treating patches as a sequence).
 
-## Self-Supervised ViT Pretraining
+### Classification Token
 
-### DINO and DINOv2
-**DINO** trains ViTs with self-supervised learning using a self-distillation objective. The resulting features have remarkable properties — the attention maps naturally segment objects without any segmentation supervision.
+A special learnable `[CLS]` token is prepended to the patch sequence, mirroring BERT. The final hidden state of the `[CLS]` token is used as the image representation for classification.
 
-**DINOv2** scales this up with curated data and improved training, producing general-purpose visual features that transfer well to many downstream tasks.
+### Transformer Encoder
 
-### MAE (Masked Autoencoders)
-**MAE** pretrains ViTs by masking 75% of image patches and training the model to reconstruct them. This is highly efficient (only 25% of patches are processed by the encoder) and produces strong representations.
+The sequence of patch embeddings passes through a standard Transformer encoder: Multi-Head Self-Attention (MHSA) → Layer Norm → Feed-Forward Network (FFN), repeated $L$ times.
 
-## Segment Anything Model (SAM)
+```
+Image → Patches → Linear Projection → + Positional Embeddings
+     → Transformer Encoder (×L) → [CLS] token → Classification Head
+```
 
-**SAM** from Meta uses a ViT image encoder to produce dense image embeddings, then a lightweight mask decoder that generates segmentation masks from point, box, or text prompts. The ViT encoder runs once per image; the decoder runs in milliseconds for each prompt.
+## Scaling Behavior
 
-SAM demonstrates how a powerful ViT backbone enables flexible, interactive vision applications.
+Unlike CNNs, ViT models require large-scale pre-training to shine:
 
-## ViTs in Multimodal Models
+| Model | Params | Pre-train Data | ImageNet-1K Top-1 |
+|---|---|---|---|
+| ViT-B/16 | 86M | ImageNet-21K | 85.8% |
+| ViT-L/16 | 307M | ImageNet-21K | 87.8% |
+| ViT-H/14 | 632M | JFT-3B | 90.5% |
 
-ViTs are the standard vision encoder in multimodal LLMs:
-- **CLIP**: Trains a ViT and text encoder jointly with contrastive learning on image-text pairs.
-- **LLaVA, InternVL, Qwen-VL**: Use CLIP or SigLIP ViTs as the vision backbone for vision-language models.
+With sufficient data, ViT outperforms CNN-based models. Without it, CNNs trained on the same data generally win.
 
-The quality of the vision encoder directly determines the visual understanding capability of the downstream multimodal model.
+## Data-Efficient ViT Variants
+
+Several methods address ViT's data hunger:
+
+### DeiT (Data-efficient Image Transformers)
+
+Facebook AI's DeiT trains ViT-scale models on **ImageNet-1K alone** (no extra data) using:
+
+- **Knowledge distillation** from a CNN teacher.
+- A **distillation token** alongside the `[CLS]` token during training.
+
+DeiT matched ViT's performance without requiring the massive JFT or ImageNet-21K datasets.
+
+### Swin Transformer
+
+The **Swin Transformer** reintroduces hierarchical features and local attention windows — combining ViT's strengths with CNN-like inductive biases:
+
+- Operates attention within **local windows** (efficient — linear in image size instead of quadratic).
+- **Shifted windows** across layers enable cross-window information flow.
+- Produces multi-scale feature maps, making it compatible with dense prediction tasks (detection, segmentation).
+
+Swin became a standard backbone for many vision tasks after outperforming ViT on COCO object detection.
+
+## Self-Supervised ViT: DINO and MAE
+
+### DINO
+
+DINO trains ViT using **self-distillation** — no labels required. A student network learns to match the output of a slowly updating teacher (momentum encoder). The resulting features:
+
+- Exhibit strong semantic segmentation properties *without supervision*.
+- Produce attention maps that naturally highlight object boundaries.
+
+### Masked Autoencoders (MAE)
+
+MAE adapts the BERT-style masked pre-training to images. A high fraction (75%) of patches are masked, and the model learns to reconstruct the missing ones. This produces:
+
+- Rich, transferable image representations.
+- Highly efficient pre-training (fewer visible patches = less compute per step).
+
+## Dense Prediction: Detection and Segmentation
+
+ViT was initially designed for classification. Adapting it for dense tasks required new architectures:
+
+- **ViTDet** — Uses a plain ViT backbone with feature pyramid construction for object detection.
+- **Segment Anything Model (SAM)** — Uses a ViT encoder to enable promptable, zero-shot segmentation of anything in an image.
+- **SETR / Segmenter** — Apply ViT encoders with transformer decoders for semantic segmentation.
+
+## ViT vs. CNN — A Summary
+
+| Property | CNN | ViT |
+|---|---|---|
+| Inductive bias | Strong (local, translation equivariant) | Weak |
+| Data efficiency | High | Requires large pre-training |
+| Global context | Limited (deep layers only) | Every layer |
+| Scalability | Good | Excellent |
+| Dense tasks (detection, segmentation) | Excellent (native hierarchies) | Requires adaptation (Swin, MAE, SAM) |
+
+## Practical Considerations
+
+- For **limited data** scenarios, use CNN backbones or DeiT with strong augmentation.
+- For **large-scale pre-training**, ViT/Swin are preferred.
+- For **dense prediction**, Swin Transformer or ViTDet are strong choices.
+- Pre-trained ViT checkpoints (from HuggingFace or timm) can be fine-tuned on downstream tasks with minimal data.
+
+Vision Transformers represent a paradigm shift in computer vision — moving from hand-crafted locality priors toward scalable, data-driven global modeling that increasingly unifies vision and language under a common architectural family.

@@ -1,61 +1,99 @@
 ---
-title: "State Space Models: Mamba and Beyond"
-description: "Learn how state space models (SSMs) like Mamba offer a compelling alternative to transformers for sequence modeling, with linear-time inference and strong long-range dependency handling."
+title: State Space Models and Mamba
+description: Learn how State Space Models (SSMs) and the Mamba architecture challenge the Transformer's dominance by offering linear-time sequence modeling with selective state compression.
 ---
 
-Transformers dominate sequence modeling, but their quadratic attention complexity is a fundamental bottleneck for very long sequences. **State Space Models (SSMs)** offer a mathematically elegant alternative with linear-time inference and competitive performance.
+State Space Models (SSMs) are a family of sequence models rooted in classical control theory that have re-emerged as serious competitors to Transformers for long-sequence tasks. The **Mamba** architecture (2023) introduced selective state spaces, enabling SSMs to match Transformer quality while scaling to million-length sequences with linear time and memory complexity.
 
-## What is a State Space Model?
+## What Is a State Space Model?
 
-SSMs are inspired by classical control theory. They model a sequence by maintaining a hidden state that evolves over time:
+An SSM maps an input sequence $x(t)$ to an output $y(t)$ through a hidden state $h(t)$, governed by a system of differential equations:
 
-```
-h'(t) = Ah(t) + Bx(t)   # state update
-y(t)  = Ch(t) + Dx(t)   # output
-```
+$$\dot{h}(t) = \mathbf{A} h(t) + \mathbf{B} x(t)$$
+$$y(t) = \mathbf{C} h(t) + \mathbf{D} x(t)$$
 
-Where:
-- `x(t)` is the input at time t
-- `h(t)` is the hidden state
-- `A, B, C, D` are learned matrices
+where:
 
-This is a continuous-time formulation. For discrete sequences, it's discretized using a timescale parameter Δ.
+- $\mathbf{A}$ is the state transition matrix (how the hidden state evolves)
+- $\mathbf{B}$ is the input projection matrix
+- $\mathbf{C}$ is the output projection matrix
+- $\mathbf{D}$ is the feedthrough (skip connection)
 
-## S4: Structured State Spaces
+For discrete sequences, this is discretized using a timescale parameter $\Delta$ into:
 
-The **S4** model (Structured State Space for Sequences) made SSMs practical for deep learning by:
+$$h_t = \bar{\mathbf{A}} h_{t-1} + \bar{\mathbf{B}} x_t$$
+$$y_t = \mathbf{C} h_t$$
 
-1. Parameterizing A as a diagonal-plus-low-rank matrix for efficient computation.
-2. Computing the SSM as a convolution during training (parallelizable).
-3. Using the recurrent form during inference (constant memory, linear time).
+## The S4 Model: Structured State Spaces
 
-S4 showed strong results on the Long Range Arena benchmark, handling sequences of thousands of tokens efficiently.
+The S4 model (Gu et al., 2021) made SSMs practical by parameterizing $\mathbf{A}$ as a **HiPPO matrix** — a structured matrix designed to optimally memorize input history via orthogonal polynomial projections. This enabled extremely long-range dependency capture while remaining computationally efficient.
+
+S4 could process sequences of length 16,000+ on tasks where Transformers struggled, particularly in **Long-Range Arena** benchmarks.
+
+## The Core Problem with Original SSMs
+
+Traditional SSMs have **time-invariant** parameters: $\mathbf{A}$, $\mathbf{B}$, and $\mathbf{C}$ are fixed for all positions. This means the model applies the same compression to every input regardless of content — it cannot selectively remember important tokens or forget irrelevant ones.
+
+This is fundamentally different from attention, which is **content-aware**.
 
 ## Mamba: Selective State Spaces
 
-The key limitation of S4 is that A, B, C are fixed for all inputs — the model can't selectively focus on or ignore parts of the input. **Mamba** solves this with **selective state spaces**:
+Mamba (Gu & Dao, 2023) solves this with a **selection mechanism**: the SSM parameters $\mathbf{B}$, $\mathbf{C}$, and $\Delta$ become **functions of the input**:
 
-- B, C, and Δ become functions of the input x.
-- The model learns to selectively remember or forget information based on content.
-- A hardware-aware parallel scan algorithm makes this efficient on GPUs.
+$$\mathbf{B}_t = \text{Linear}(x_t), \quad \mathbf{C}_t = \text{Linear}(x_t), \quad \Delta_t = \text{softplus}(\text{Linear}(x_t))$$
 
-Mamba achieves transformer-level performance on language modeling while scaling linearly with sequence length.
+Now the model can dynamically decide what to store in state and what to ignore — similar to how a human reader skims irrelevant sentences while retaining key facts.
 
-## Mamba-2 and Hybrid Architectures
+## Complexity Comparison
 
-**Mamba-2** reformulates the selective SSM as a structured matrix multiplication, enabling better theoretical understanding and faster GPU kernels.
+| Model | Training Complexity | Inference Complexity | Memory |
+|---|---|---|---|
+| Transformer | $O(L^2 D)$ | $O(L^2 D)$ | $O(L^2)$ |
+| S4/S6 (SSM) | $O(L D N)$ | $O(D N)$ per step | $O(D N)$ |
+| Mamba | $O(L D N)$ | $O(D N)$ per step | $O(D N)$ |
 
-**Hybrid models** (e.g., Jamba, Zamba) interleave Mamba layers with attention layers, getting the best of both: efficient long-range processing from SSM layers and precise retrieval from attention layers.
+where $L$ = sequence length, $D$ = model dimension, $N$ = state dimension.
 
-## SSMs vs. Transformers
+Mamba's inference is **recurrent** (constant per-step cost), but its training uses a **parallel scan algorithm** for efficiency — getting the best of both worlds.
 
-| Property | Transformer | SSM (Mamba) |
-|---|---|---|
-| Training complexity | O(L²) | O(L) |
-| Inference memory | O(L) KV cache | O(1) state |
-| Recall from long context | Strong | Weaker |
-| Throughput at long sequences | Poor | Excellent |
+## Hardware-Aware Implementation
 
-## Current Status
+Mamba uses a **hardware-aware parallel scan** (similar to FlashAttention's philosophy) that keeps intermediate states in SRAM rather than HBM, dramatically reducing memory bandwidth. This makes Mamba 5x faster than Transformers at sequence lengths of 2K+ tokens.
 
-SSMs are a serious research direction but haven't yet displaced transformers at the frontier. The main challenge is that attention's ability to do exact lookup over the full context is hard to replicate with a fixed-size state. Hybrid architectures are currently the most promising path forward.
+## Mamba Architecture
+
+A Mamba block replaces the Transformer's attention sublayer with a **Selective SSM** sublayer:
+
+```
+Input → LayerNorm → [Linear projection → SSM → Gate] → Linear → Output
+                                     ↑
+                            (Selective: B, C, Δ from input)
+```
+
+Multiple Mamba blocks are stacked, with the FFN sublayer retained from standard Transformers.
+
+## Mamba 2 and Hybrid Architectures
+
+**Mamba 2** (2024) reformulates the SSM as a structured matrix multiplication, enabling even faster training and establishing a theoretical connection to attention mechanisms — both can be seen as special cases of a **State Space Duality (SSD)** framework.
+
+**Hybrid models** like **Jamba** (AI21 Labs) and **Zamba** alternate Mamba and Transformer blocks, capturing Mamba's efficiency for long contexts while retaining Transformer's strong in-context learning for short sequences.
+
+## Where Mamba Shines
+
+- **Genomics:** DNA sequence modeling with sequences up to 1M base pairs
+- **Audio:** Raw waveform modeling (SampleMamba)
+- **Video:** Long-video understanding without quadratic attention cost
+- **Code:** File-level code completion with long context
+- **Time Series:** Multi-variate forecasting with long historical windows
+
+## Current Limitations
+
+- **Recall-intensive tasks:** Mamba underperforms Transformers on tasks requiring precise lookup of specific earlier tokens (e.g., retrieval, multi-hop Q&A)
+- **In-context learning:** Transformers still have an edge on few-shot learning benchmarks
+- **Ecosystem:** Fewer optimized kernels, less tooling support compared to Transformer infrastructure
+
+## Further Reading
+
+- Gu et al. (2021), *Efficiently Modeling Long Sequences with Structured State Spaces (S4)*
+- Gu & Dao (2023), *Mamba: Linear-Time Sequence Modeling with Selective State Spaces*
+- Dao & Gu (2024), *Transformers are SSMs: Generalized Models and Efficient Algorithms Through Structured State Space Duality*
