@@ -1,280 +1,357 @@
 ---
-title: Introduction to vLLM
-description: Learn how vLLM accelerates LLM inference through PagedAttention, continuous batching, and an OpenAI-compatible API — enabling high-throughput, memory-efficient serving of large language models in production.
+title: "Introduction to vLLM: High-Throughput LLM Inference"
+description: "Learn how vLLM achieves 10x higher throughput for LLM serving using PagedAttention, continuous batching, and efficient memory management."
 ---
 
-**vLLM** is an open-source library for fast and memory-efficient large language model inference and serving. Developed at UC Berkeley and released in 2023, vLLM introduced **PagedAttention** — a novel memory management algorithm that dramatically increases GPU memory utilization during inference — enabling significantly higher throughput than previous serving frameworks while maintaining low latency.
+vLLM is an open-source inference engine that has revolutionized LLM serving. By reimagining how KV caches are managed, vLLM achieves dramatically higher throughput than naive implementations. This guide covers the architecture and practical usage.
 
-vLLM has become one of the most widely adopted LLM serving frameworks, used by organizations ranging from startups to hyperscalers. It supports a growing list of model architectures, provides an OpenAI-compatible REST API out of the box, and integrates with the broader LLM ecosystem including Hugging Face, LangChain, and LlamaIndex.
+## Why vLLM Matters
 
-## The KV Cache Problem
+Traditional LLM serving suffers from memory fragmentation:
 
-To understand vLLM's innovations, it helps to understand why LLM inference is memory-constrained.
+```python
+# Naive KV cache management
+class NaiveKVCache:
+    def __init__(self, max_batch_size=32, max_seq_len=2048, hidden_size=4096):
+        self.max_seq_len = max_seq_len
+        self.hidden_size = hidden_size
+        
+        # Allocate full memory for each request upfront
+        # Wastes memory when requests are short
+        self.cache = torch.zeros(max_batch_size, max_seq_len, hidden_size)
+    
+    def allocate(self, request_id, seq_len):
+        # Assign fixed slot in pre-allocated memory
+        self.allocations[request_id] = (0, seq_len)
+    
+    def free(self, request_id):
+        # Just mark as free - memory not reused
+        del self.allocations[request_id]
+```
 
-During **autoregressive generation**, a language model generates one token at a time. For efficiency, the **key-value (KV) cache** stores the attention keys and values computed for all previous tokens, so they don't need to be recomputed at each new token position.
-
-The KV cache grows linearly with sequence length and batch size:
-
-$$\text{KV cache size} = 2 \times n_{layers} \times n_{heads} \times d_{head} \times L_{seq} \times B_{batch} \times \text{bytes per element}$$
-
-For a LLaMA-2 13B model with a 4,096 token context, generating a single sequence requires approximately 3 GB of GPU memory for the KV cache alone. Processing a batch of 8 sequences requires 24 GB — leaving little room for the model weights (26 GB in FP16).
-
-**Memory fragmentation** compounds the problem: since different sequences in a batch have different lengths, naive memory management wastes significant GPU memory. Prior systems either padded all sequences to a fixed maximum length (wasting memory) or reserved contiguous memory blocks per sequence (causing fragmentation).
+vLLM's innovations:
+- **PagedAttention**: Memory-efficient KV cache like virtual memory.
+- **Continuous batching**: Dynamic batch sizes for variable-length sequences.
+- **High-throughput serving**: 10x better than HuggingFace Transformers.
 
 ## PagedAttention
 
-**PagedAttention** (Kwon et al., 2023) solves the KV cache memory problem by borrowing the concept of **virtual memory paging** from operating systems.
-
-### How PagedAttention Works
-
-Rather than allocating a contiguous block of GPU memory for each sequence's KV cache, PagedAttention divides the KV cache into fixed-size **pages** (blocks) of tokens:
-
-- Each page holds the KV cache for a fixed number of tokens (typically 16 or 32 tokens per page).
-- Pages are allocated on demand as sequences grow — no upfront memory reservation.
-- Pages for a single sequence need not be contiguous in physical GPU memory; a **block table** maps logical token positions to physical page addresses.
-- When a sequence terminates, its pages are immediately freed and returned to the pool for reuse.
-
-This design has two key benefits:
-
-1. **Near-zero internal fragmentation**: Each page is nearly fully utilized, because pages are filled token-by-token.
-2. **Near-zero external fragmentation**: Pages can be allocated from anywhere in GPU memory, avoiding the need for large contiguous blocks.
-
-PagedAttention achieves 4–5% memory waste (from partially filled pages at sequence ends), compared to 60–80% waste in prior systems.
-
-### Memory Sharing for Parallel Sampling
-
-PagedAttention enables **physical memory sharing** between sequences that share common prefixes:
-
-- **System prompt sharing**: When many requests share the same system prompt, their KV cache pages for the prompt are shared in physical memory — requiring the pages to be written only once regardless of how many concurrent requests share that prefix.
-- **Beam search and parallel sampling**: When generating multiple candidate sequences from the same prefix (beam search, parallel decoding), the divergent portion of each sequence has its own pages, while the common prefix pages are shared. Pages are copy-on-write: shared until a sequence writes to them, then copied.
-
-This sharing can reduce KV cache memory consumption by 55% for beam search scenarios.
+```python
+class PagedKVCache:
+    def __init__(self, num_layers, num_heads, head_dim, block_size=16):
+        self.block_size = block_size
+        self.num_layers = num_layers
+        
+        # Logical blocks (what the model sees)
+        self.logical_blocks = {}
+        
+        # Physical blocks (actual GPU memory)
+        self.free_physical_blocks = set()
+        self.physical_blocks = {}  # block_num -> tensor
+        
+        # Initialize free blocks
+        for i in range(num_physical_blocks):
+            self.free_physical_blocks.add(i)
+    
+    def allocate(self, request_id, num_tokens):
+        """Allocate logical blocks for a request."""
+        num_blocks = (num_tokens + self.block_size - 1) // self.block_size
+        blocks = []
+        
+        for _ in range(num_blocks):
+            if not self.free_physical_blocks:
+                # Need to evict or allocate more
+                raise OutOfMemoryError
+            
+            physical_block = self.free_physical_blocks.pop()
+            blocks.append(physical_block)
+            self.physical_blocks[physical_block] = {}
+        
+        self.logical_blocks[request_id] = blocks
+        return blocks
+    
+    def copy(self, src_request, dst_request, src_offset, dst_offset, num_blocks):
+        """Copy blocks between requests (for prefix caching)."""
+        src_blocks = self.logical_blocks[src_request]
+        dst_blocks = self.logical_blocks[dst_request]
+        
+        for i in range(num_blocks):
+            src_physical = src_blocks[src_offset + i]
+            dst_physical = dst_blocks[dst_offset + i]
+            
+            # Copy tensor data
+            self.physical_blocks[dst_physical] = self.physical_blocks[src_physical].clone()
+```
 
 ## Continuous Batching
 
-Traditional LLM serving batches requests by **static batching**: grouping requests into a batch, processing the entire batch until all sequences complete, then starting the next batch. This is inefficient because:
-
-- Short sequences in the batch complete early, leaving their GPU resources idle while longer sequences continue.
-- New requests that arrive while a batch is running must wait until the entire batch completes.
-
-**Continuous batching** (also called iteration-level scheduling or dynamic batching) operates at the **token level** rather than the request level:
-
-- At each decoding step, completed sequences are immediately ejected from the batch.
-- New requests waiting in the queue are added to the batch at the same step.
-- The batch size dynamically adjusts, keeping GPU utilization high.
-
-This reduces average request latency and dramatically increases throughput — vLLM achieves 2–24× higher throughput than Hugging Face Transformers with comparable latency, depending on request patterns.
-
-## Getting Started with vLLM
-
-### Installation
-
-```bash
-pip install vllm
+```python
+class ContinuousBatcher:
+    def __init__(self, max_batch_size=32):
+        self.max_batch_size = max_batch_size
+        self.active_requests = []
+        self.pending_requests = queue.Queue()
+    
+    def add_request(self, request):
+        """Add new request to queue."""
+        if len(self.active_requests) < self.max_batch_size:
+            self.active_requests.append(request)
+        else:
+            self.pending_requests.put(request)
+    
+    def step(self):
+        """Run one inference step."""
+        # Prepare batch
+        batch = self._prepare_batch()
+        
+        # Run inference
+        outputs = run_model(batch)
+        
+        # Process completions
+        completed = []
+        remaining = []
+        
+        for i, request in enumerate(batch.requests):
+            output = outputs[i]
+            
+            if output.finished:
+                completed.append(request)
+            else:
+                request.append_token(output.new_token)
+                remaining.append(request)
+        
+        # Replace completed requests with pending
+        self.active_requests = remaining
+        
+        while self.active_requests and self.pending_requests:
+            if len(self.active_requests) >= self.max_batch_size:
+                break
+            self.active_requests.append(self.pending_requests.get())
+        
+        return completed, remaining
 ```
 
-vLLM requires CUDA-capable GPUs. For specific CUDA versions or ROCm (AMD) support, refer to the vLLM documentation for the appropriate installation command.
+## Using vLLM
 
-### Offline Batch Inference
-
-For processing a fixed set of prompts without a server:
+### Basic Usage
 
 ```python
 from vllm import LLM, SamplingParams
 
-# Load model
-llm = LLM(model="meta-llama/Meta-Llama-3-8B-Instruct")
+# Initialize model
+llm = LLM(
+    model="meta-llama/Llama-2-7b-chat-hf",
+    tensor_parallel_size=1,  # Use multiple GPUs
+    dtype="half",            # Use fp16
+    enforce_eager=True,      # Don't use CUDA graphs for debugging
+)
 
-# Define sampling parameters
+# Set sampling parameters
 sampling_params = SamplingParams(
     temperature=0.7,
     top_p=0.9,
     max_tokens=512,
+    stop=["User:", "\n###"],
 )
 
 # Generate completions
 prompts = [
-    "Explain the theory of relativity in simple terms.",
-    "What is the difference between machine learning and deep learning?",
-    "Write a Python function to compute Fibonacci numbers.",
+    "Explain quantum computing in simple terms.",
+    "Write a Python function to calculate Fibonacci numbers.",
+    "What are the benefits of exercise?",
 ]
 
 outputs = llm.generate(prompts, sampling_params)
 
 for output in outputs:
-    prompt = output.prompt
-    generated_text = output.outputs[0].text
-    print(f"Prompt: {prompt!r}\nGenerated: {generated_text!r}\n")
+    print(f"Prompt: {output.prompt}")
+    print(f"Generated: {output.outputs[0].text}")
+    print("---")
 ```
 
-### OpenAI-Compatible API Server
-
-vLLM's API server is compatible with the OpenAI API, enabling drop-in replacement of OpenAI API calls with locally hosted or cloud-hosted open models:
-
-```bash
-# Start the server
-python -m vllm.entrypoints.openai.api_server \
-    --model meta-llama/Meta-Llama-3-8B-Instruct \
-    --port 8000 \
-    --tensor-parallel-size 2
-```
-
-Once running, any OpenAI-compatible client works without modification:
+### OpenAI-Compatible API
 
 ```python
-from openai import OpenAI
+# vLLM provides OpenAI-compatible endpoints
+import openai
 
-client = OpenAI(
+# Configure client to use vLLM server
+client = openai.OpenAI(
     base_url="http://localhost:8000/v1",
-    api_key="not-needed",  # vLLM doesn't require an API key by default
+    api_key="dummy",  # Not required for local vLLM
 )
 
-completion = client.chat.completions.create(
-    model="meta-llama/Meta-Llama-3-8B-Instruct",
+# Use exactly like OpenAI API
+response = client.chat.completions.create(
+    model="llama-2-7b",
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "What is PagedAttention?"},
+        {"role": "user", "content": "Hello!"}
     ],
     temperature=0.7,
-    max_tokens=512,
 )
 
-print(completion.choices[0].message.content)
+print(response.choices[0].message.content)
 ```
 
-## Tensor Parallelism
-
-For models too large for a single GPU, vLLM supports **tensor parallelism** via the `--tensor-parallel-size` flag:
-
-```bash
-# Serve a 70B model across 4 GPUs
-python -m vllm.entrypoints.openai.api_server \
-    --model meta-llama/Meta-Llama-3-70B-Instruct \
-    --tensor-parallel-size 4 \
-    --dtype bfloat16
-```
-
-Tensor parallelism in vLLM uses the same approach as Megatron-LM — splitting attention heads and MLP layers across GPUs, with all-reduce operations at each layer boundary.
-
-## Quantization Support
-
-vLLM supports multiple quantization formats for reduced memory footprint and faster inference:
-
-### AWQ (Activation-aware Weight Quantization)
-
-```python
-llm = LLM(
-    model="TheBloke/Llama-2-13B-AWQ",
-    quantization="awq",
-)
-```
-
-### GPTQ
-
-```python
-llm = LLM(
-    model="TheBloke/Llama-2-13B-GPTQ",
-    quantization="gptq",
-)
-```
-
-### FP8
-
-```python
-llm = LLM(
-    model="meta-llama/Meta-Llama-3.1-8B-Instruct",
-    quantization="fp8",
-    dtype="auto",
-)
-```
-
-Quantization allows serving models with significantly reduced GPU memory requirements — an AWQ 4-bit quantized LLaMA-3 8B fits in under 5 GB of GPU memory, enabling deployment on consumer GPUs.
-
-## Structured Output and JSON Mode
-
-vLLM integrates with **Outlines** and supports guided generation for structured outputs:
+### Multi-LoRA Serving
 
 ```python
 from vllm import LLM, SamplingParams
+from peft import PeftModel
 
-llm = LLM(model="meta-llama/Meta-Llama-3-8B-Instruct")
-
-# JSON schema-constrained generation
-schema = {
-    "type": "object",
-    "properties": {
-        "name": {"type": "string"},
-        "age": {"type": "integer"},
-        "email": {"type": "string"}
-    },
-    "required": ["name", "age", "email"]
-}
-
-sampling_params = SamplingParams(
-    temperature=0.0,
-    guided_json=schema,
-    max_tokens=200,
+# Load base model with LoRA support
+llm = LLM(
+    model="meta-llama/Llama-2-7b",
+    enable_lora=True,     # Enable LoRA support
+    max_loras=4,          # Maximum loaded LoRAs
+    max_lora_rank=16,     # Maximum LoRA rank
 )
 
-output = llm.generate(
-    ["Extract the contact information: John Smith, 34 years old, john@example.com"],
-    sampling_params
+# Serve multiple adapters
+llm.set_adapters(["adapter_1", "adapter_2", "adapter_3"])
+
+# Generate with specific adapter
+outputs = llm.generate(
+    ["Hello, I need help with coding."],
+    SamplingParams(temperature=0.7),
+    lora_request="adapter_1"  # Use specific adapter
 )
 ```
 
-## Prefix Caching
+## Performance Optimization
 
-**Automatic Prefix Caching (APC)** in vLLM reuses KV cache from previous requests when new requests share a common prefix. This is particularly valuable for:
-
-- **System prompts**: A shared system prompt is computed once and its KV cache reused across all requests.
-- **Multi-turn conversations**: As a conversation grows, the KV cache from previous turns is reused rather than recomputed.
-- **RAG applications**: When the same retrieved documents are used across multiple queries, their KV cache is shared.
-
-Enable prefix caching with the `--enable-prefix-caching` flag:
-
-```bash
-python -m vllm.entrypoints.openai.api_server \
-    --model meta-llama/Meta-Llama-3-8B-Instruct \
-    --enable-prefix-caching
-```
-
-Prefix caching can reduce time-to-first-token (TTFT) by 80%+ for requests with long shared prefixes, and significantly reduces GPU compute load for high-traffic deployments.
-
-## Speculative Decoding
-
-**Speculative decoding** uses a small draft model to propose multiple tokens, which the larger target model verifies in a single forward pass. vLLM supports speculative decoding as a drop-in throughput enhancement:
+### Tensor Parallelism
 
 ```python
+# For multi-GPU serving
 llm = LLM(
-    model="meta-llama/Meta-Llama-3-70B-Instruct",
-    speculative_model="meta-llama/Meta-Llama-3-8B-Instruct",
-    num_speculative_tokens=5,
+    model="meta-llama/Llama-2-70b",
+    tensor_parallel_size=8,  # Spread across 8 GPUs
+    pipeline_parallel_size=1,
 )
+
+# vLLM handles all the communication internally
+# No code changes needed beyond specifying tensor_parallel_size
 ```
 
-For typical conversational prompts, speculative decoding achieves 1.5–3× throughput improvement with no change in output quality (the target model accepts or rejects each draft token, maintaining exact equivalence with non-speculative decoding).
+### Quantization
+
+```python
+# Use quantized models for better throughput
+llm = LLM(
+    model="TheBloke/Llama-2-7b-Chat-GPTQ",
+    quantization="gptq",  # Or "awq", "squeezellm"
+)
+
+# Benefits:
+# - 2-4x memory reduction
+# - Higher batch sizes
+# - Lower latency for memory-bound workloads
+```
+
+### Prefix Caching
+
+```python
+# Enable prefix caching for repeated contexts
+llm = LLM(
+    model="meta-llama/Llama-2-7b",
+    enable_prefix_caching=True,  # Cache KV for repeated prefixes
+)
+
+# Example: System prompt caching
+# First request processes full prompt
+# Subsequent requests reuse cached KV for system prompt
+```
+
+## Monitoring and Debugging
+
+### Logits Processing
+
+```python
+# Access logits for analysis
+outputs = llm.generate(
+    ["Hello, my name is"],
+    SamplingParams(
+        temperature=0.7,
+        logprobs=5,  # Return log probabilities
+        top_logprobs=5,
+    ),
+)
+
+for output in outputs[0].outputs[0].logprobs:
+    print(f"Token: {token}, Logprob: {logprob}")
+```
+
+### Performance Metrics
+
+```python
+# vLLM exposes Prometheus metrics at /metrics
+import requests
+
+response = requests.get("http://localhost:8000/metrics")
+print(response.text)
+
+# Key metrics:
+# - vllm:request_throughput_tok_per_second
+# - vllm:generation_token_count
+# - vllm:num_requests_waiting
+# - vllm:gpu_cache_usage
+```
 
 ## Comparing vLLM to Alternatives
 
-| Feature | vLLM | TGI (HuggingFace) | TensorRT-LLM | Ollama |
-| --- | --- | --- | --- | --- |
-| Core innovation | PagedAttention + continuous batching | Continuous batching | NVIDIA-specific CUDA kernels | Ease of use |
-| Best for | High-throughput production serving | Quick deployment | Maximum NVIDIA GPU performance | Local development |
-| Multi-GPU | Tensor + pipeline parallel | Tensor parallel | Full 3D parallel | Limited |
-| Quantization | AWQ, GPTQ, FP8, INT8 | GPTQ, AWQ, FP8 | INT8, INT4, FP8 | GGUF (llama.cpp) |
-| OpenAI API | Yes | Yes | Yes (via Triton) | Yes |
-| Hardware | NVIDIA, AMD (ROCm) | NVIDIA, AMD | NVIDIA only | CPU + GPU |
+| Feature | vLLM | TensorRT-LLM | HuggingFace |
+|---------|------|--------------|-------------|
+| **Ease of use** | High | Medium | High |
+| **Throughput** | Very High | Very High | Medium |
+| **Latency** | Low | Lowest | Medium |
+| **Model support** | Wide | NVIDIA-optimized | All models |
+| **Customization** | Medium | High | Very High |
+| **Hardware** | All GPUs | NVIDIA | All GPUs |
 
-vLLM is the leading choice for production serving scenarios requiring maximum throughput on NVIDIA hardware, with strong AMD support through the ROCm backend.
+## Production Deployment
 
-## Production Deployment Patterns
+### Kubernetes
 
-**Kubernetes deployment** with vLLM typically uses:
+```yaml
+# vLLM deployment for Kubernetes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-inference
+spec:
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: vllm
+        image: vllm/vllm-openai:latest
+        ports:
+        - containerPort: 8000
+        resources:
+          limits:
+            nvidia.com/gpu: 1
+          requests:
+            nvidia.com/gpu: 1
+        env:
+        - name: MODEL_NAME
+          value: "meta-llama/Llama-2-7b-chat-hf"
+        - name: TP_SIZE
+          value: "1"
+```
 
-- **Horizontal Pod Autoscaler**: Scaling the number of vLLM replicas based on request queue depth.
-- **GPU operator**: Scheduling vLLM pods on GPU nodes.
-- **Load balancer**: Routing requests across replicas, with sticky routing for prefix caching efficiency.
+### Health Checks
 
-**Multi-model serving**: Running multiple model instances on different GPU allocations within the same Kubernetes cluster, routing requests to the appropriate model based on the request's model parameter.
+```python
+# vLLM provides health endpoints
+import requests
 
-**Observability**: vLLM exposes Prometheus metrics including request throughput, queue depth, KV cache utilization, and token generation rate — enabling capacity planning and SLA monitoring.
+# Liveness check
+requests.get("http://localhost:8000/health")
+
+# Readiness check (includes model loaded status)
+requests.get("http://localhost:8000/health")
+```
+
+vLLM has become the standard for high-throughput LLM serving. Its combination of PagedAttention, continuous batching, and memory-efficientKV cache management enables serving models that would be impossible with naive implementations.
