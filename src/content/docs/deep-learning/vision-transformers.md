@@ -1,56 +1,33 @@
 ---
 title: Vision Transformers (ViT)
-description: How the Transformer architecture was adapted for image understanding, replacing convolutional networks as the state of the art in computer vision.
+description: How the Transformer architecture was adapted for image understanding, becoming the foundation of modern computer vision.
 ---
 
-Vision Transformers (ViT) apply the Transformer architecture — originally designed for text — directly to images. Introduced by Google Brain in 2020, ViT demonstrated that a pure Transformer without convolutional inductive biases can match or exceed CNNs on image classification when trained on sufficient data. It has since become the foundation of modern computer vision.
+Vision Transformers (ViT) apply the Transformer architecture directly to images. Introduced by Google in 2020, ViT demonstrated that a pure Transformer — without convolutional biases — can match or exceed CNNs on image classification when trained at scale. It is now the backbone of modern computer vision and multimodal AI.
 
-## From Text to Images
+## The Patch Embedding Trick
 
-The key challenge in applying Transformers to images is that images are 2D grids of pixels — not sequences of tokens. ViT solves this by dividing the image into a grid of fixed-size **patches** (e.g., 16×16 pixels), flattening each patch into a vector, and treating the sequence of patch vectors as tokens.
+Transformers expect sequences of tokens. ViT converts an image into a sequence by splitting it into fixed-size **patches** (e.g., 16×16 pixels), flattening each patch into a vector, and projecting it to an embedding dimension. A 224×224 image becomes 196 patch tokens.
 
-A learnable **[CLS] token** is prepended to the sequence (borrowed from BERT), and its final representation is used for classification. **Positional embeddings** encode each patch's location in the image.
+A learnable **[CLS] token** is prepended; its final representation is used for classification. Positional embeddings encode each patch's location.
 
 ## Architecture
 
-1. Split image into N patches of size P×P (e.g., a 224×224 image → 196 patches of 16×16).
-2. Linearly project each patch to an embedding dimension D.
+1. Split image → N patches of size P×P.
+2. Linear projection of each patch to dimension D.
 3. Add positional embeddings.
-4. Pass through L standard Transformer encoder layers (multi-head self-attention + MLP).
-5. Use the [CLS] token's output for the final prediction.
+4. Pass through standard Transformer encoder layers.
+5. Use [CLS] token output for prediction.
 
-This is nearly identical to BERT's architecture — just with image patches instead of word tokens.
-
-## Why ViT Outperforms CNNs at Scale
-
-CNNs have strong inductive biases: translation equivariance and local receptive fields. These help on small datasets but can limit what the model learns. ViT has weaker inductive biases — it learns spatial relationships from data, not from architecture. Given enough data (like JFT-300M), this pays off with better representations.
-
-On smaller datasets, CNNs still have an advantage due to their built-in priors. Data augmentation and training tricks (DeiT) close much of this gap.
+This is nearly identical to BERT — just with image patches instead of words.
 
 ## Key Variants
 
-- **DeiT (Data-efficient Image Transformers):** Trains ViT on ImageNet-1k alone using knowledge distillation from a CNN teacher.
-- **Swin Transformer:** Uses shifted window attention for efficiency — computes attention within local windows rather than globally. State of the art for detection and segmentation.
-- **BEiT / MAE (Masked Autoencoders):** Self-supervised pretraining for ViT — mask patches and reconstruct them, analogous to BERT's masked language modeling.
-- **DINO / DINOv2:** Self-supervised ViT with excellent zero-shot transfer properties.
-- **EVA, SigLIP, InternViT:** Vision encoders used in modern multimodal LLMs.
+- **DeiT:** Trains ViT on ImageNet alone using distillation from a CNN teacher — no large private datasets needed.
+- **Swin Transformer:** Shifted window attention for efficiency; state of the art for detection and segmentation.
+- **MAE (Masked Autoencoders):** Self-supervised ViT pretraining — mask random patches and reconstruct them.
+- **DINOv2:** Self-supervised ViT with strong zero-shot transfer for many vision tasks.
 
-## Applications
+## Why It Matters
 
-- **Image classification** (ImageNet and beyond)
-- **Object detection and segmentation** (Swin-based detectors)
-- **Vision-language models:** ViT is the visual encoder in CLIP, LLaVA, GPT-4V, Gemini
-- **Medical imaging:** Pathology slides, radiology, ophthalmology
-- **Remote sensing:** Satellite and aerial image analysis
-
-## ViT vs. CNN: When to Use Which
-
-| | ViT | CNN |
-|---|---|---|
-| Large datasets | ✅ Excellent | ✅ Good |
-| Small datasets | ⚠️ Needs tricks | ✅ Better |
-| Global context | ✅ Self-attention | ❌ Limited |
-| Compute efficiency | ⚠️ Quadratic attention | ✅ More efficient |
-| Multimodal integration | ✅ Natural | ⚠️ Harder |
-
-For most new research and production vision systems at scale, ViT-based architectures are now the default choice.
+ViT is the visual encoder in CLIP, LLaVA, GPT-4o, and Gemini. Understanding ViT is essential for understanding how modern multimodal models process images. With sufficient data, it outperforms CNNs because self-attention captures global context that convolutions — limited to local receptive fields — cannot.
