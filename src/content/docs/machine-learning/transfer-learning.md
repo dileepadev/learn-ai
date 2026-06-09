@@ -1,56 +1,45 @@
 ---
 title: Transfer Learning
-description: How pre-trained models are adapted to new tasks with minimal data and compute.
+description: How transfer learning allows models trained on one task to be adapted for another, dramatically reducing data and compute requirements.
 ---
 
-Transfer learning is a technique where a model trained on one task is reused as the starting point for a model on a different but related task. It is one of the most practical and widely adopted approaches in modern machine learning.
+Transfer learning is a technique where a model trained on one task is reused as the starting point for a model on a different but related task. Rather than training from scratch, you leverage representations already learned from large datasets, saving enormous amounts of time, data, and compute.
 
-## The Core Idea
+## Why Transfer Learning Works
 
-Training a large model from scratch requires vast amounts of labelled data, significant compute, and considerable time. Transfer learning sidesteps this by reusing knowledge a model has already acquired.
+Deep neural networks trained on large datasets learn hierarchical representations. In computer vision, early layers detect edges and textures; later layers detect shapes and objects. These general features are useful across many visual tasks, not just the original one. Transfer learning exploits this: keep the learned features, adapt only what needs to change for the new task.
 
-A model trained on a large general-purpose dataset — such as ImageNet for images or a large text corpus for language — develops feature representations that generalise well. These representations can be transferred to narrower, domain-specific tasks with far less data.
+## The Two Main Approaches
 
-## How It Works
+### Feature Extraction
+Freeze all the pretrained model's weights and use it as a fixed feature extractor. Only a new classifier head added on top is trained. Fast and effective when your dataset is small and similar to the original training data.
 
-The general workflow for transfer learning has two phases:
+### Fine-Tuning
+Start from pretrained weights and continue training the entire model (or the last few layers) on the new task. More powerful — allows the model to adapt its representations to the new domain. Requires more data and compute than feature extraction, but less than training from scratch.
 
-1. **Pre-training:** A base model is trained on a large dataset using a general objective (e.g., image classification across 1,000 categories or predicting masked tokens in text).
-2. **Fine-tuning:** The pre-trained model is then trained further on a smaller, task-specific dataset, either by updating all weights or only part of the network.
+## In Natural Language Processing
 
-### Variants
+Transfer learning transformed NLP with models like BERT, GPT, and RoBERTa. Pretrained on massive text corpora (predicting masked words or next tokens), they learn rich language representations. Fine-tuning on downstream tasks — sentiment analysis, question answering, named entity recognition — typically requires only a small labeled dataset and a few epochs.
 
-- **Feature extraction:** The pre-trained model's weights are frozen. Only a new output layer is trained on top.
-- **Full fine-tuning:** All weights are updated during the second training phase, giving more flexibility but requiring more data.
-- **Partial fine-tuning:** Only the later (task-specific) layers are updated while early layers remain frozen.
+The pretraining → fine-tuning paradigm is now standard across all of NLP.
 
-## Why It Works
+## In Computer Vision
 
-Deep neural networks learn hierarchical representations. Early layers tend to capture general low-level features (edges, textures, basic syntax) that are useful across many tasks. Later layers capture higher-level, task-specific patterns. By keeping the general layers and replacing or adapting task-specific ones, a model can perform well on a new task without starting from scratch.
+ImageNet-pretrained models (ResNet, EfficientNet, ViT) serve as backbone features for virtually every vision task: object detection, medical image segmentation, satellite imagery analysis. Models like CLIP, pretrained on image-text pairs, transfer exceptionally well to novel visual tasks with zero or few examples.
 
-## Applications
+## Domain Adaptation
 
-- **Computer Vision:** Fine-tuning ResNet or EfficientNet for medical image classification, defect detection, or satellite imagery analysis.
-- **Natural Language Processing:** Adapting BERT, RoBERTa, or GPT-series models for sentiment analysis, named entity recognition, or question answering.
-- **Speech Recognition:** Adapting Whisper or wav2vec models for low-resource languages.
-- **Code Generation:** Fine-tuning code-focused models for proprietary APIs or specific programming frameworks.
+A related concept: when the source and target domains differ significantly (e.g., training on natural photos, deploying on medical scans), naive fine-tuning may underperform. Domain adaptation techniques explicitly minimize the distribution gap between source and target, often using adversarial training or domain-invariant representations.
 
-## Benefits
+## When Transfer Learning Helps Most
 
-- **Less Data Required:** A few hundred to a few thousand labelled examples may be sufficient when fine-tuning a strong base model.
-- **Faster Training:** Pre-trained weights serve as a warm start, drastically reducing training time and compute costs.
-- **Better Generalisation:** Models trained on broad tasks often generalise more robustly than models trained on small domain-specific datasets alone.
+- **Small labeled datasets:** A few hundred to a few thousand examples is often enough when starting from a strong pretrained model.
+- **Limited compute:** Training from scratch is expensive; fine-tuning can be done on a single GPU in hours.
+- **Related domains:** The more similar the source and target task, the more transferable the learned representations.
 
-## Challenges
+## Practical Tips
 
-- **Domain Gap:** If the pre-training domain is very different from the target domain, transfer may be limited or require more data to bridge the gap.
-- **Negative Transfer:** In rare cases, pre-trained knowledge can hurt performance on the target task if the tasks are sufficiently dissimilar.
-- **Catastrophic Forgetting:** Full fine-tuning can overwrite general knowledge learned during pre-training, especially when the fine-tuning dataset is small.
-
-## Relationship to Foundation Models
-
-Modern foundation models — large pre-trained models such as GPT-4, Claude, LLaMA, and CLIP — are designed explicitly for transfer. They act as universal starting points that can be adapted to thousands of downstream tasks. Techniques like LoRA and adapter layers have made this process even more parameter-efficient.
-
-## Summary
-
-Transfer learning has shifted the default approach in both NLP and computer vision from training specialist models from scratch to adapting general-purpose pre-trained models. It lowers the barrier to building high-quality AI systems and is a foundational skill for any machine learning practitioner.
+- Choose a pretrained model trained on data similar to your domain.
+- Use a lower learning rate for fine-tuning than for training from scratch (e.g., 1e-5 instead of 1e-3).
+- Fine-tune the last few layers first; unfreeze more layers if performance plateaus.
+- Watch for catastrophic forgetting — the model losing pretrained knowledge when fine-tuned aggressively.
