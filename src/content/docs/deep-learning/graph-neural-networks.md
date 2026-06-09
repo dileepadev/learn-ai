@@ -1,22 +1,54 @@
 ---
-title: Graph Neural Networks (GNNs)
-description: An introduction to neural networks designed for graph-structured data.
+title: Graph Neural Networks
+description: An introduction to Graph Neural Networks (GNNs) — deep learning models that operate directly on graph-structured data.
 ---
 
-Graph Neural Networks (GNNs) are a class of deep learning methods designed to perform inference on data described by graphs. Unlike traditional neural networks, GNNs can capture the relationships and dependencies within complex data structures.
+Graph Neural Networks (GNNs) are a class of deep learning models designed to work with graph-structured data — data where entities (nodes) have relationships (edges) between them. Unlike images or text, graphs have irregular structure and variable connectivity, making standard neural networks unsuitable. GNNs solve this by learning to aggregate information from a node's local neighborhood.
 
-## Core Concepts
+## Why Graphs?
 
-- **Nodes:** Individual entities in the graph (e.g., users in a social network).
-- **Edges:** Relationships between nodes (e.g., friendships).
-- **Message Passing:** The process where nodes exchange information with their neighbors to update their own representations.
+Many real-world problems are naturally represented as graphs:
+- **Social networks:** Users as nodes, friendships as edges.
+- **Molecules:** Atoms as nodes, chemical bonds as edges.
+- **Knowledge graphs:** Entities as nodes, relations as edges.
+- **Citation networks:** Papers as nodes, citations as edges.
+- **Road networks:** Intersections as nodes, roads as edges.
 
-## Common Architectures
+## The Core Idea: Message Passing
 
-- **Graph Convolutional Networks (GCNs):** Adapt the concept of convolutions to graphs.
-- **Graph Attention Networks (GATs):** Use attention mechanisms to weight the importance of neighboring nodes.
-- **GraphSAGE:** A framework for inductive representation learning on large graphs.
+Most GNNs are built on **message passing**: at each layer, every node aggregates feature information from its neighbors, updates its own representation, and passes the result to the next layer.
 
-## Use Cases
+```
+hᵥ⁽ˡ⁺¹⁾ = UPDATE(hᵥ⁽ˡ⁾, AGGREGATE({hᵤ⁽ˡ⁾ : u ∈ N(v)}))
+```
 
-GNNs are widely used in social network analysis, recommendation systems, molecular chemistry, and fraud detection.
+After k layers, each node's representation captures information from its k-hop neighborhood.
+
+## Common GNN Variants
+
+- **GCN (Graph Convolutional Network):** Averages neighbor features with spectral-based convolutions. Simple and widely used.
+- **GraphSAGE:** Samples a fixed number of neighbors and uses learnable aggregation functions (mean, LSTM, pooling). Scales to large graphs.
+- **GAT (Graph Attention Network):** Assigns learned attention weights to neighbors instead of uniform averaging — more expressive.
+- **GIN (Graph Isomorphism Network):** Theoretically most expressive; uses sum aggregation to distinguish graph structures.
+- **Graph Transformer:** Applies Transformer-style attention to graph structures, combining local message passing with global attention.
+
+## Types of Tasks
+
+- **Node classification:** Classify individual nodes (e.g., categorize users in a social network).
+- **Edge prediction / link prediction:** Predict missing or future edges (e.g., recommend friends, predict protein interactions).
+- **Graph classification:** Classify entire graphs (e.g., predict if a molecule is toxic).
+- **Graph generation:** Generate new graphs with desired properties (e.g., drug-like molecules).
+
+## Applications
+
+- **Drug discovery:** Predicting molecular properties and generating novel drug candidates (used in AlphaFold's structure module).
+- **Recommendation systems:** Pinterest's PinSage, Uber Eats recommendations.
+- **Fraud detection:** Catching fraud rings by analyzing transaction graphs.
+- **Traffic forecasting:** Google Maps uses GNNs to predict travel times.
+- **Physics simulation:** Modeling particle interactions for scientific computing.
+
+## Libraries and Tools
+
+- **PyTorch Geometric (PyG):** The most popular GNN library, with implementations of dozens of GNN variants.
+- **DGL (Deep Graph Library):** Flexible, supports multiple backends (PyTorch, TensorFlow).
+- **NetworkX:** Graph manipulation and analysis (not for deep learning but commonly used alongside GNN tools).
