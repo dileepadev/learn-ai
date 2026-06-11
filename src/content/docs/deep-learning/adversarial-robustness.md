@@ -1,212 +1,178 @@
 ---
 title: Adversarial Robustness
-description: Understand adversarial attacks on neural networks — FGSM, PGD, Carlini-Wagner, and patch attacks — and the defenses that make models robust, including adversarial training, randomized smoothing for certified guarantees, and AutoAttack for reliable robustness evaluation.
+description: Understanding and defending against adversarial attacks — how small perturbations fool deep learning models and methods to improve robustness.
 ---
 
-Neural networks can be fooled by inputs that are imperceptible to humans but cause dramatic prediction failures. An image classified with 99% confidence as a cat can be perturbed by a few pixel values — changes invisible to the human eye — and be confidently misclassified as a toaster. This fragility is not a corner case: it has practical implications for autonomous vehicles, medical imaging, face recognition, and any security-sensitive deployment of deep learning.
+**Adversarial robustness** addresses a fundamental vulnerability of deep learning: carefully crafted small perturbations to inputs can cause models to make confident, incorrect predictions. An imperceptibly modified image can fool an image classifier; a few characters added to text can mislead a sentiment classifier.
 
-## What Are Adversarial Examples?
+This is both a research problem (understanding why models are vulnerable) and a security problem (ensuring AI systems are reliable in adversarial settings).
 
-An **adversarial example** is an input $\mathbf{x}' = \mathbf{x} + \boldsymbol{\delta}$ where $\boldsymbol{\delta}$ is a small perturbation constrained to an $\ell_p$ ball of radius $\varepsilon$:
+## The Adversarial Vulnerability
 
-$$\|\boldsymbol{\delta}\|_p \leq \varepsilon$$
+### Example: Adversarial Image
 
-The $\ell_\infty$ norm (maximum absolute pixel change) is most common in research. The adversary maximizes the model's loss:
+A deep CNN correctly classifies an image as "panda" with 58% confidence. An attacker adds a small, imperceptible noise pattern:
 
-$$\boldsymbol{\delta}^* = \arg\max_{\|\boldsymbol{\delta}\|_\infty \leq \varepsilon} \mathcal{L}(f(\mathbf{x} + \boldsymbol{\delta}), y)$$
+$$x_{adversarial} = x + \epsilon$$
 
-## Attack Methods
+where $\epsilon$ is chosen to maximize the model's error. The resulting image, visually indistinguishable from the original to humans, now causes the model to classify it as "gibbon" with 99% confidence.
 
-### FGSM — Fast Gradient Sign Method
+### Why Does This Happen?
 
-FGSM (Goodfellow et al., 2014) computes the single-step perturbation in the direction of the gradient sign:
+Deep neural networks are highly non-linear, with millions of parameters. In high dimensions, they can be surprisingly brittle:
 
-$$\mathbf{x}' = \mathbf{x} + \varepsilon \cdot \mathrm{sign}\!\left(\nabla_{\mathbf{x}} \mathcal{L}(f(\mathbf{x}), y)\right)$$
+- **Linear hypothesis**: Neural networks may be more linear than we expect in data manifolds, making them vulnerable to linear perturbations.
+- **Sharp loss landscape**: Models may have sharp, narrow decision boundaries. Small moves perpendicular to the boundary cause misclassification.
+- **Superposition**: Adversarial perturbations exploit the superposition of learned features in ways humans don't perceive.
 
-```python
-import torch
-import torch.nn.functional as F
+## Adversarial Attack Methods
 
+### FGSM (Fast Gradient Sign Method)
 
-def fgsm_attack(model, x, y, epsilon: float = 8/255):
-    """Fast Gradient Sign Method attack."""
-    x_adv = x.clone().requires_grad_(True)
-    loss = F.cross_entropy(model(x_adv), y)
-    loss.backward()
-    with torch.no_grad():
-        x_adv = x + epsilon * x_adv.grad.sign()
-        x_adv = x_adv.clamp(0, 1)
-    return x_adv
-```
+The simplest and fastest attack:
 
-FGSM is fast but weak — a single gradient step often fails to find a strong adversarial example.
+$$x_{adv} = x + \epsilon \cdot \text{sign}(\nabla_x L(x, y))$$
 
-### PGD — Projected Gradient Descent
+where $L$ is the loss function and $y$ is the true label. Move in the direction of the gradient by a small step $\epsilon$.
 
-PGD (Madry et al., 2018) iterates FGSM steps with projection back onto the $\varepsilon$-ball after each step. It is the dominant attack for adversarial training:
+**Computational cost**: O(1 forward-backward pass) per attack.
 
-$$\mathbf{x}^{t+1} = \Pi_{\mathbf{x}+\mathcal{S}}\!\left(\mathbf{x}^t + \alpha \cdot \mathrm{sign}\!\left(\nabla_{\mathbf{x}^t} \mathcal{L}(f(\mathbf{x}^t), y)\right)\right)$$
+**Effective?** Yes, but easily defended against (see Defensive Distillation).
 
-where $\Pi$ projects back into the feasible set (intersection of $\ell_\infty$ ball and $[0,1]^d$) and $\alpha$ is the step size.
+### PGD (Projected Gradient Descent)
 
-```python
-def pgd_attack(model, x, y, epsilon: float = 8/255, alpha: float = 2/255, steps: int = 40):
-    """PGD attack (Madry et al., 2018)."""
-    # Random initialization within epsilon-ball
-    x_adv = x.clone() + torch.empty_like(x).uniform_(-epsilon, epsilon)
-    x_adv = x_adv.clamp(0, 1)
+A stronger, iterative attack:
 
-    for _ in range(steps):
-        x_adv = x_adv.clone().requires_grad_(True)
-        loss = F.cross_entropy(model(x_adv), y)
-        loss.backward()
-        with torch.no_grad():
-            grad_sign = x_adv.grad.sign()
-            x_adv = x_adv + alpha * grad_sign
-            # Project back to epsilon-ball centered at original x
-            delta = (x_adv - x).clamp(-epsilon, epsilon)
-            x_adv = (x + delta).clamp(0, 1)
-    return x_adv
-```
+$$x_{t+1} = \text{Clip}_{x+S}(x_t + \alpha \cdot \text{sign}(\nabla_x L(x_t, y)))$$
 
-### Carlini-Wagner (C&W) Attack
+where $\text{Clip}$ projects onto an $\epsilon$-ball around the original input $x$, and $S$ is the allowed perturbation set.
 
-The C&W attack (Carlini & Wagner, 2017) formulates adversarial example generation as an optimization problem that directly minimizes perturbation size subject to a misclassification constraint:
+**Computational cost**: Multiple iterations (e.g., 20 steps), more expensive than FGSM.
 
-$$\min_{\boldsymbol{\delta}} \|\boldsymbol{\delta}\|_2 + c \cdot \mathcal{L}_{\mathrm{CW}}(f(\mathbf{x} + \boldsymbol{\delta}), y)$$
+**Effectiveness**: More robust than FGSM; harder to defend against.
 
-where $\mathcal{L}_{\mathrm{CW}}$ uses logit differences rather than cross-entropy, enabling more precise control over confidence. C&W is much stronger than PGD against many defenses, historically breaking defenses that appeared robust to FGSM/PGD.
+### C&W (Carlini & Wagner)
 
-### Patch Attacks
+Uses an optimization algorithm to find the smallest perturbation:
 
-**Adversarial patches** (Brown et al., 2017) are conspicuous, printable perturbations localized to a small patch that can cause misclassification regardless of scene context. Unlike pixel-budget attacks, patches are physically realizable — they can be printed and placed in front of a camera.
+$$\min_{x'} ||x' - x||_2^2 + c \cdot L(x')$$
 
-## AutoAttack
+subject to $x' \in [0, 1]^d$ (valid input range).
 
-Evaluating robustness reliably is difficult — many published defenses were later shown to be broken by stronger attacks. **AutoAttack** (Croce & Hein, 2020) is an ensemble of parameter-free attacks that provides a reliable robustness estimate without tuning:
+**Computational cost**: High (iterative optimization).
 
-```python
-from autoattack import AutoAttack
+**Effectiveness**: Very strong; breaks many defense mechanisms.
 
-adversary = AutoAttack(
-    model,
-    norm="Linf",
-    eps=8/255,
-    version="standard",  # APGD-CE + APGD-T + FAB + Square
-)
-x_adv = adversary.run_standard_evaluation(x_test, y_test, bs=128)
-```
+### Black-Box Attacks
 
-AutoAttack is the standard benchmark for adversarial robustness in the research community.
+An attacker has no access to model gradients. Strategies:
 
-## Adversarial Training
+- **Transferability**: Generate adversarial examples for a surrogate model; often transfer to the target model.
+- **Query-based attacks**: Query the model many times to approximate gradients.
+- **Decision-based attacks**: Use only the model's predicted class (not confidence scores).
 
-**Adversarial training** (Madry et al., 2018) is the most reliable empirical defense: generate adversarial examples during training and include them in each minibatch.
+## Defense Mechanisms
 
-```python
-from torch.optim import SGD
+### Adversarial Training
 
+Train the model on adversarial examples:
 
-def adversarial_train_step(model, optimizer, x, y, epsilon=8/255, alpha=2/255, steps=10):
-    """One step of PGD adversarial training."""
-    model.eval()  # Use eval mode for attack generation (BN fix)
-    x_adv = pgd_attack(model, x, y, epsilon=epsilon, alpha=alpha, steps=steps)
+1. For each training batch, generate adversarial examples using an attack method (e.g., PGD).
+2. Train the model to correctly classify both clean and adversarial examples.
 
-    model.train()
-    optimizer.zero_grad()
-    loss = F.cross_entropy(model(x_adv), y)
-    loss.backward()
-    optimizer.step()
-    return loss.item()
+$$\min_\theta \mathbb{E}_{x, y} \left[ L(\theta, x, y) + L(\theta, x_{adv}, y) \right]$$
 
+**Effectiveness**: Improves robustness significantly.
 
-model = ResNet18()
-optimizer = SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=5e-4)
+**Trade-off**: Reduces accuracy on clean (non-adversarial) examples, increases training time.
 
-for epoch in range(200):
-    for x_batch, y_batch in train_loader:
-        x_batch, y_batch = x_batch.cuda(), y_batch.cuda()
-        adversarial_train_step(model, optimizer, x_batch, y_batch)
-```
+### Defensive Distillation
 
-**TRADES** (Zhang et al., 2019) improves upon PGD adversarial training by decomposing the robust loss into natural accuracy plus a regularization term measuring KL divergence between clean and adversarial predictions:
+Train a "defensive" model by distilling a base model through high-temperature softmax:
 
-$$\mathcal{L}_{\mathrm{TRADES}} = \mathcal{L}_{\mathrm{CE}}(f(\mathbf{x}), y) + \frac{1}{\lambda} D_{\mathrm{KL}}\!\left(f(\mathbf{x}) \| f(\mathbf{x}')\right)$$
+$$T = t, \quad L = \text{KL}(\text{softmax}(f_{\text{base}}(x) / t), \text{softmax}(f_{\text{defense}}(x) / t))$$
 
-The $\lambda$ parameter controls the accuracy-robustness tradeoff — smaller $\lambda$ increases robustness at the cost of clean accuracy.
+High temperature $t$ reduces the sharpness of predictions, making gradients smaller and attacks less effective.
 
-## Certified Robustness with Randomized Smoothing
+**Effectiveness**: Moderate; gradient-based attacks can adapt (BPDA — Backward Pass Differentiable Approximation).
 
-Adversarial training provides empirical robustness — the model withstands known attacks but has no guarantee against unknown attacks. **Randomized smoothing** (Cohen et al., 2019) provides a **certified** $\ell_2$ radius within which no perturbation can change the classification.
+### Input Transformations
 
-Given a base classifier $f$, define a smoothed classifier:
+Preprocess inputs to remove adversarial perturbations:
 
-$$g(\mathbf{x}) = \arg\max_c\, \Pr_{\boldsymbol{\epsilon} \sim \mathcal{N}(\mathbf{0}, \sigma^2 \mathbf{I})}\!\left[f(\mathbf{x} + \boldsymbol{\epsilon}) = c\right]$$
+- **JPEG compression**: Quantization can destroy fine-grained adversarial noise.
+- **Bit-depth reduction**: Lower precision removes high-frequency components.
+- **Morphological operations**: Erosion/dilation to smooth perturbations.
 
-If the most probable class has probability $p_A \geq 0.5$, the certified $\ell_2$ radius is:
+**Limitation**: Attacks can adapt to transformations; not a robust defense alone.
 
-$$r = \sigma \cdot \Phi^{-1}(p_A)$$
+### Certified Robustness
 
-```python
-import torch
-import scipy.stats as stats
-import numpy as np
+Compute formal guarantees that no adversarial perturbation of size $\epsilon$ can fool the model:
 
+Using **randomized smoothing**:
+1. Add Gaussian noise to the input: $x' = x + \delta, \delta \sim \mathcal{N}(0, \sigma^2 I)$.
+2. Classify $x'$ multiple times and take a majority vote.
+3. For appropriate $\sigma$ and sample counts, this provides a certified robustness bound.
 
-def certify(model, x, sigma: float = 0.25, n_samples: int = 10000, alpha: float = 0.001):
-    """
-    Certify a single input with randomized smoothing.
-    Returns (predicted_class, certified_radius) or abstains.
-    """
-    model.eval()
-    x_expanded = x.unsqueeze(0).expand(n_samples, -1, -1, -1)
-    noise = torch.randn_like(x_expanded) * sigma
-    with torch.no_grad():
-        preds = model(x_expanded + noise).argmax(dim=1)
+**Advantage**: Formal guarantees (worst-case, adversarial robustness).
 
-    counts = torch.bincount(preds, minlength=model.num_classes).cpu().numpy()
-    top_class = counts.argmax()
+**Trade-off**: Typically requires lower accuracy or smaller certified radius.
 
-    # One-sided binomial confidence interval (Clopper-Pearson)
-    p_A_low = stats.binom.ppf(alpha, n_samples, counts[top_class] / n_samples)
-    p_A_low = max(p_A_low, 0.5)
+### TRADES (Trade-off Adjustment)
 
-    if p_A_low < 0.5:
-        return None, 0.0  # Abstain
+Balance clean accuracy and robust accuracy by training on both:
 
-    radius = sigma * stats.norm.ppf(p_A_low)
-    return top_class, radius
-```
+$$L_{\text{TRADES}} = L_{\text{clean}} + \beta \cdot L_{\text{robust}}$$
 
-## Robustness-Accuracy Tradeoff
+where $L_{\text{robust}}$ is computed on adversarial examples. The hyperparameter $\beta$ controls the trade-off.
 
-A fundamental tension exists between natural accuracy and adversarial robustness. Tsipras et al. (2019) showed theoretically (under certain data distributions) that improving robustness necessarily reduces natural accuracy. On CIFAR-10:
+## The Adversarial Robustness-Accuracy Trade-off
 
-| Method | Clean Acc (%) | Robust Acc (%) at ε=8/255 |
-| --- | --- | --- |
-| Natural training | 95.0 | < 1 |
-| PGD adversarial training | 84.7 | 56.6 |
-| TRADES (β=6) | 84.9 | 57.0 |
-| WideResNet + AutoAugment + AT | 88.2 | 63.3 |
-| Ensemble/self-training SOTA | 92.2 | 71.1 |
+Increasing adversarial robustness often decreases clean accuracy:
 
-## Transferability and Black-Box Attacks
+- **Standard training**: ~95% clean accuracy, ~0% robustness to adversarial examples.
+- **Adversarial training with ε = 8/255**: ~85% clean accuracy, ~50% robustness to PGD attacks.
 
-Adversarial examples generated on one model often **transfer** to different models with different architectures or training data — even without access to the target model's weights. This enables black-box attacks:
+This trade-off is fundamental and widely observed. Improving both simultaneously remains an open problem.
 
-1. Train a substitute model on query outputs from the target
-1. Generate adversarial examples on the substitute model
-1. Apply them to the target (transfer attack)
+## Transferability and Domain Shift
 
-Ensemble attacks (averaging gradients from multiple surrogate models) achieve higher transfer rates. Defense strategies such as adversarial training reduce transferability but do not eliminate it.
+Adversarial examples often transfer across models:
+- An adversarial example that fools ResNet-50 often fools VGG-16.
+- This raises security concerns (attackers don't need to know the target model) but enables transferability-based defenses.
 
-## Summary
+Transfer is stronger for similar architectures; it decreases for models trained differently (e.g., adversarially vs. standardly trained).
 
-Adversarial robustness is a fundamental challenge for trustworthy deep learning deployment:
+## Applications and Domains
 
-- **Adversarial examples** exploit the geometry of high-dimensional space: tiny perturbations in pixel space can cross decision boundaries
-- **FGSM** and **PGD** are the canonical attacks; PGD adversarial training remains the strongest empirical defense
-- **AutoAttack** provides a reliable, parameter-free benchmark for evaluating robustness claims
-- **Randomized smoothing** offers certified $\ell_2$ robustness guarantees at the cost of inference-time overhead and a robustness-accuracy tradeoff
-- The **accuracy-robustness tradeoff** appears fundamental — there is no free defense — but the gap narrows with better training strategies, architectures, and data augmentation
-- Understanding adversarial fragility motivates careful threat modeling before deploying neural networks in security-sensitive applications
+### Autonomous Vehicles
+
+Adversarial patches on stop signs can fool object detectors, creating safety risks. Robustness is critical.
+
+### Malware Detection
+
+Adversarial examples in machine learning-based intrusion detection. Adversarial robustness needed for security systems.
+
+### NLP
+
+Adversarial text attacks add typos or synonym replacements to fool text classifiers. Defenses are less mature than in vision.
+
+## Current Challenges
+
+**Computational cost**: Adversarial training is expensive (10-100x slower than standard training).
+
+**Certified vs. empirical robustness**: Certified defenses provide formal guarantees but often have large certified radii that are impractical. Empirical robustness is harder to guarantee.
+
+**Adaptive attacks**: Defenses designed against specific attacks often fail to adaptive attacks that are aware of the defense.
+
+**Scalability**: Current defenses don't scale well to large models (e.g., large language models).
+
+## Research Directions
+
+- **Efficient adversarial training**: Reducing computational overhead.
+- **Understanding robustness**: Why do some models learn more robust features than others?
+- **Certified defenses at scale**: Extending certified robustness to large, practical models.
+- **Multimodal robustness**: Adversarial attacks and defenses for vision-language models.
+
+Adversarial robustness remains a fundamental challenge for deploying deep learning in safety-critical systems, with implications for security, reliability, and trustworthiness of AI.
