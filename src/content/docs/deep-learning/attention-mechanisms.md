@@ -1,149 +1,63 @@
 ---
-title: Attention Mechanisms Beyond Transformers
-description: Exploring attention and its variants across architectures — self-attention, cross-attention, sparse attention, and applications beyond transformers.
+title: Attention Mechanisms
+description: A guide to understanding attention mechanisms — the key innovation that powers modern transformers and large language models.
 ---
 
-**Attention mechanisms** have become fundamental to modern deep learning, enabling models to dynamically focus on relevant information. While transformers popularized attention, the concept predates them and extends far beyond sequence modeling.
+Attention mechanisms allow neural networks to dynamically focus on the most relevant parts of an input when producing an output. Originally introduced to improve sequence-to-sequence models in NLP, attention is now the foundation of Transformers and essentially all modern large language models (LLMs).
 
-## The Core Attention Concept
+## The Problem Attention Solves
 
-Attention answers: "Given a query, which parts of the input are most relevant?"
+Early sequence models (RNNs, LSTMs) compressed the entire input into a single fixed-size context vector. This created a bottleneck — long sequences caused information to be lost or diluted. Attention lets the model selectively look back at all input tokens when generating each output token.
 
-Mathematically, attention computes a weighted sum of values based on similarity between queries and keys:
+## How Attention Works
 
-$$\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d_k}}\right)V$$
+The core mechanism computes a weighted sum over values, where the weights reflect how relevant each value is to the current query.
 
-where:
-- **Q (Query)**: What are we looking for?
-- **K (Key)**: What does each position offer?
-- **V (Value)**: What information to retrieve?
+Given:
+- **Query (Q):** What the current position is "looking for"
+- **Key (K):** What each input position "offers"
+- **Value (V):** The actual content to aggregate
 
-The softmax ensures attention weights sum to 1, creating an interpretable probability distribution.
+The attention output is computed as:
+
+```
+Attention(Q, K, V) = softmax(QKᵀ / √d_k) · V
+```
+
+The dot product of Q and K measures relevance; dividing by √d_k prevents gradient vanishing for large dimensions; softmax converts scores into a probability distribution over positions.
+
+## Self-Attention
+
+In **self-attention**, the queries, keys, and values all come from the same sequence. This allows each token to attend to every other token in the same sequence, capturing long-range dependencies directly — something RNNs struggle with.
+
+## Multi-Head Attention
+
+Instead of a single attention function, **multi-head attention** runs several attention operations in parallel with different learned projections:
+
+```
+MultiHead(Q, K, V) = Concat(head₁, ..., headₕ) · Wᴼ
+```
+
+Each head can learn to attend to different aspects (e.g., one head focuses on syntax, another on semantics). This is the key building block of the Transformer architecture.
 
 ## Types of Attention
 
-### Self-Attention
+- **Scaled Dot-Product Attention:** The standard form described above.
+- **Additive Attention (Bahdanau):** Uses a feed-forward network to compute compatibility — the original attention mechanism from 2015.
+- **Cross-Attention:** Queries come from one sequence (e.g., decoder), keys and values from another (e.g., encoder output). Used in encoder-decoder Transformers.
+- **Causal / Masked Attention:** Each position can only attend to previous positions. Essential for autoregressive language models.
+- **Sparse Attention:** Limits attention to a subset of positions to reduce the O(n²) cost. Examples: Longformer, BigBird.
 
-Each position attends to all positions in the same sequence. Used in transformers, self-attention enables long-range dependencies:
+## Computational Complexity
 
-$$\text{Self-Attention}(X) = \text{softmax}\left(\frac{XX^T}{\sqrt{d_k}}\right)X$$
+Standard attention scales as **O(n²)** in sequence length, which becomes expensive for very long contexts. This drives research into efficient alternatives like:
+- **Flash Attention:** Reorders computation for memory efficiency without changing results.
+- **Linear Attention:** Approximates softmax attention in linear time.
 
-**Complexity**: O(n²) in sequence length — expensive for long sequences.
+## Why Attention Matters
 
-### Cross-Attention
-
-One sequence (decoder) attends to another (encoder). Essential in encoder-decoder models:
-- Machine translation: decoder attends to source language encoder.
-- Visual question answering: question attends to image regions.
-
-### Multi-Head Attention
-
-Run multiple attention operations in parallel, each focusing on different subspaces:
-
-$$\text{MultiHead}(Q, K, V) = \text{Concat}(\text{head}_1, ..., \text{head}_h)W^O$$
-
-where each head $\text{head}_i = \text{Attention}(QW_i^Q, KW_i^K, VW_i^V)$.
-
-**Benefit**: Different heads capture different relationships (syntactic, semantic, structural).
-
-### Sparse Attention
-
-For long sequences, compute attention on a subset of positions rather than all:
-- **Strided attention**: Attend to every k-th position.
-- **Fixed patterns**: Attend to local neighborhoods (e.g., windows) + selected distant positions.
-- **Learned patterns**: Trainable attention masks.
-
-**Trade-off**: Reduced complexity (O(n) or O(n log n)) at the cost of potentially missing long-range dependencies.
-
-### Local Attention
-
-Restrict attention to a fixed-size window around each position. Used in Swin Transformers and other efficient variants.
-
-Enables models to scale to longer sequences while retaining local context.
-
-### Rotary Positional Embeddings (RoPE)
-
-A modern alternative to absolute positional encodings. RoPE encodes position as a rotation in the complex plane, applied directly to the attention computation. This approach:
-- Generalizes better to sequences longer than training length.
-- Works naturally in multi-head settings.
-- Is increasingly used in modern LLMs (GPT-3, LLaMA).
-
-## Attention in Vision
-
-### Spatial Attention
-
-In CNNs, add attention modules to selectively emphasize important spatial regions:
-
-$$\text{Output} = \text{Attention}(X) \odot X$$
-
-where $\odot$ is element-wise multiplication. Attention maps which spatial regions are important for the task.
-
-### Channel Attention
-
-Adaptively reweight feature channels based on their importance (Squeeze-and-Excitation networks):
-
-$$\text{ChannelAttention}(X) = \sigma(\text{MLP}(\text{GlobalPooling}(X)))$$
-
-Enables the model to amplify informative channels and suppress less useful ones.
-
-### Bottleneck Attention Module (BAM)
-
-Combines spatial and channel attention:
-
-$$X' = \text{BAM}(X) \odot X$$
-
-Applied at bottleneck layers to provide adaptive feature recalibration.
-
-## Efficient Attention Variants
-
-### Linear Attention
-
-Approximate softmax attention with linear complexity using kernel methods:
-
-$$\text{Linear Attention}(Q, K, V) \approx \frac{\phi(Q)(\phi(K)^T V)}{\phi(Q)(\phi(K)^T \mathbf{1})}$$
-
-where $\phi$ is a feature map (e.g., exponential kernel). Enables long-range dependencies with O(n) complexity.
-
-### Performer
-
-Uses random feature approximations to make attention linear time and space. Enables processing very long sequences (16K+ tokens) efficiently.
-
-### Reformer
-
-Uses **locality-sensitive hashing (LSH)** to cluster similar positions, reducing attention to relevant clusters:
-- O(n log n) complexity.
-- Especially effective for finding long-range repeating patterns.
-
-## Attention in Recurrent Networks
-
-Before transformers, attention was added to RNNs and LSTMs:
-
-$$\text{context}_t = \sum_i \alpha_{ti} h_i$$
-
-where $\alpha_{ti}$ are learned attention weights. This enabled RNN decoders (in sequence-to-sequence models) to focus on relevant encoder states.
-
-**Impact**: Dramatically improved machine translation and summarization, but RNNs remained slow to parallelize — a key reason transformers eventually replaced them.
-
-## Cross-Modal Attention
-
-Align information across modalities (vision + language, audio + text):
-
-- **CLIP**: Image and text embeddings attend to each other to learn joint representations.
-- **Multimodal transformers**: Cross-attention between visual and textual tokens to enable VQA and image captioning.
-
-## Interpretability
-
-Attention weights provide interpretability: visualizing which positions a model attends to reveals its reasoning.
-
-**Limitations**:
-- Attention weights don't directly explain model decisions (probing studies show attention is not fully faithful).
-- Multiple heads may attend to different things; aggregating interpretations is non-trivial.
-
-## Current Research
-
-- **Adaptive attention**: Dynamically adjust attention patterns based on input, rather than fixed architectures.
-- **Hierarchical attention**: Multi-scale attention from local to global.
-- **Causal attention**: For autoregressive generation, attend only to past positions (prevents peeking at future tokens).
-- **Neural architecture search** for attention: Automatically discover optimal attention patterns for tasks.
-
-Attention mechanisms have evolved from auxiliary components to core building blocks of modern AI, enabling models to learn dynamic, data-dependent representations across diverse tasks and modalities.
+Attention is the mechanism that makes Transformers so powerful:
+- Captures global context regardless of distance in the sequence.
+- Parallelizable during training (unlike RNNs).
+- Interpretable — attention weights can provide insights into model behavior.
+- Generalizes beyond NLP to vision (ViT), audio, and multimodal models.
