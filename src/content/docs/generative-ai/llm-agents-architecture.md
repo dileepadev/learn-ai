@@ -1,4 +1,3 @@
-<parameter name="description">Explore architectural patterns for building LLM-powered agents — from single-agent systems to multi-agent swarms, and how to design agents that can plan, use tools, and reason about complex tasks." title: "LLM Agent Architecture: Designing Systems That Can Plan and Act"
 ---
 title: "LLM Agent Architecture: Designing Systems That Can Plan and Act"
 description: "Explore architectural patterns for building LLM-powered agents — from single-agent systems to multi-agent swarms, and how to design agents that can plan, use tools, and reason about complex tasks."
