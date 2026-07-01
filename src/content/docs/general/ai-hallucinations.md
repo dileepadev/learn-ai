@@ -1,75 +1,65 @@
 ---
-title: AI Hallucinations
-description: Understanding why large language models hallucinate, how to detect hallucinations, and practical strategies for reducing them.
+title: "Hallucinations in AI: Why Models Confidently Lie"
+description: "Understanding why LLMs generate false information and practical techniques to reduce hallucinations."
 ---
 
-AI hallucinations occur when a large language model generates content that is factually incorrect, fabricated, or not grounded in the provided context — but presents it with apparent confidence. Hallucinations are one of the most critical challenges in deploying LLMs for reliable applications.
+An AI confidently tells you that Nicolas Tesla invented the light bulb. A medical chatbot assures you that a made-up drug cures cancer. An AI research assistant cites a paper that doesn't exist. These are hallucinations—false outputs generated with high confidence.
 
-## What Is a Hallucination?
+## Why Do Models Hallucinate?
 
-A hallucination is any output where the model states something false or unsupported as if it were true. Examples include:
+**1. Training on Pattern Completion**
+Models are trained to predict the next token given previous tokens. They learn patterns from training data but don't have explicit knowledge. If a plausible-sounding continuation follows the pattern, they generate it.
 
-- Citing a paper that doesn't exist.
-- Stating incorrect statistics, dates, or names.
-- Inventing a legal case, product, or historical event.
-- Adding details to a summary that weren't in the source document.
-- Generating plausible-sounding but incorrect code or SQL.
+**2. No Access to Reality**
+LLMs don't "know" facts—they've learned statistical patterns. They can't check if something is true. To them, "Napoleon invented pizza" has the same statistical weight as "Napoleon invaded Europe" if both follow common language patterns.
 
-## Why Do LLMs Hallucinate?
+**3. Reward Misalignment**
+During training, models are rewarded for generating fluent, helpful-sounding text. Confidence doesn't necessarily correlate with accuracy. A hallucination that sounds authoritative might score well.
 
-Hallucinations arise from fundamental aspects of how LLMs are trained:
+**4. Long-Range Dependencies**
+In long outputs, models sometimes "forget" earlier context or contradict themselves because attention mechanisms have limits.
 
-1. **Probabilistic text completion:** LLMs predict the next most likely token. When they don't "know" the answer, they still generate fluent-sounding text based on statistical patterns — which can be wrong.
+## Severity Levels
 
-2. **Training data gaps:** Models may have encountered little or no reliable information about a specific topic, so they interpolate from related patterns.
+- **Low Risk:** Creative writing, brainstorming, entertainment
+- **Medium Risk:** Customer service, general Q&A, coding assistance
+- **High Risk:** Medical advice, legal counsel, financial recommendations, academic citations
+- **Critical Risk:** Safety-critical systems, autonomous control
 
-3. **Training on noisy data:** The internet contains misinformation, and models may have learned incorrect facts alongside correct ones.
+## Reduction Techniques
 
-4. **RLHF pressure to be helpful:** Reinforcement Learning from Human Feedback rewards models for sounding confident and helpful, which can conflict with epistemic humility.
+**1. Retrieval-Augmented Generation (RAG)**
+Embed your knowledge base and retrieve relevant documents before prompting. The model has grounded facts to work from.
 
-5. **No grounding mechanism by default:** Standard LLMs have no built-in way to verify claims against a knowledge source.
+**2. Temperature and Sampling**
+- Lower temperature (0.0-0.3): More deterministic, fewer hallucinations
+- Higher temperature (0.7+): More creative, more hallucinations
 
-## Types of Hallucinations
+**3. Prompt Engineering**
+- "Answer only from this document..."
+- "If you don't know, say you don't know"
+- Explicit instructions reduce hallucinations
 
-- **Factual hallucinations:** Incorrect facts presented as truth (wrong dates, people, events).
-- **Faithfulness hallucinations:** The response contradicts or goes beyond the provided source text (common in summarization).
-- **Grounding failures:** The model answers a question about a document using its own training knowledge instead of the document.
-- **Reasoning errors:** The model's chain of reasoning is flawed, leading to a wrong conclusion.
+**4. Fact Verification**
+- Secondary fact-checking pass: "Is this true? Verify each claim."
+- Using tools: Search the web, query databases, check sources
+- Multi-step verification: Have the model cite sources for claims
 
-## Detecting Hallucinations
+**5. Model Selection**
+- Larger models hallucinate less (but still do)
+- Instruction-tuned models are better at "I don't know" responses
+- Specialized models for specific domains
 
-Detection is hard because hallucinations are often fluent and plausible. Approaches include:
+**6. Fine-Tuning**
+Train the model on your specific domain with correct information. RLHF (Reinforcement Learning from Human Feedback) can teach models when to express uncertainty.
 
-- **Human review:** Experts check factual claims. High quality but expensive and slow.
-- **Self-consistency:** Ask the model the same question multiple times and flag inconsistent answers.
-- **Reference-based evaluation:** Compare model output against a ground truth document.
-- **LLM-as-judge:** Use a second LLM (or the same one) to evaluate factual consistency.
-- **Retrieval grounding:** Check whether each claim in the response is supported by retrieved documents.
-- Tools like **Ragas**, **TruLens**, and **Evidently** provide automated hallucination metrics.
+## Detection Methods
 
-## Reducing Hallucinations
+- **Consistency Checks:** Ask the same question multiple ways; inconsistent answers suggest hallucinations
+- **Source Verification:** Require the model to cite sources (though they might cite fake sources)
+- **Anomaly Detection:** Flag unusual claims or statistical outliers
+- **Human Review:** For critical outputs, have humans verify AI outputs
 
-### Retrieval-Augmented Generation (RAG)
-Ground the model in authoritative external sources. Ask the model to answer only based on the retrieved context and to state when it cannot find an answer in the sources.
+## Acknowledging Uncertainty
 
-### Better Prompting
-- Instruct the model to say "I don't know" when uncertain.
-- Ask for citations or evidence alongside claims.
-- Decompose complex questions into verifiable sub-questions.
-
-### Temperature and Sampling
-Lower temperature makes outputs more deterministic, which can reduce hallucinations on factual tasks but may reduce creativity.
-
-### Fine-Tuning
-Fine-tuning on high-quality, domain-specific data can reduce hallucinations in that domain.
-
-### Output Validation
-Post-process model outputs with fact-checking tools, structured output parsers, or secondary verification models.
-
-## The Reality: Hallucinations Cannot Be Eliminated
-
-Current LLMs will continue to hallucinate to some degree. The goal is not zero hallucinations but **appropriate reliability** for the use case:
-- High-stakes applications (medical, legal, financial) require aggressive grounding and human review.
-- Lower-stakes applications (brainstorming, drafting) can tolerate more model autonomy.
-
-Building systems that acknowledge uncertainty, cite sources, and fail gracefully is more realistic and more useful than expecting perfect factual accuracy.
+The most honest approach: train models to say "I don't know" or "I'm not confident about this" when appropriate. This is harder than it sounds—models are trained to be helpful and confident.
