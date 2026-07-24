@@ -10,6 +10,15 @@ const {
   title,
   description = "My personal journey and notes on learning Artificial Intelligence.",
 } = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const primaryNavItems = [
+  { label: "Introduction", href: `${base}/introduction/index` },
+  { label: "Machine Learning", href: `${base}/machine-learning/index` },
+  { label: "Deep Learning", href: `${base}/deep-learning/index` },
+  { label: "Generative AI", href: `${base}/generative-ai/index` },
+  { label: "Tools & Frameworks", href: `${base}/tools-frameworks/index` },
+];
 ---
 
 <!doctype html>
@@ -18,7 +27,7 @@ const {
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <script is:inline>
@@ -54,7 +63,7 @@ const {
           <div class="py-4 flex items-center justify-between">
             <a
               class="flex items-center gap-2 text-xl font-bold tracking-tight text-zinc-900 dark:text-white"
-              href="/"
+              href={`${base}/`}
             >
               <div
                 class="w-8 h-8 rounded-lg bg-linear-to-br from-emerald-400 to-cyan-500 flex items-center justify-center"
@@ -77,41 +86,18 @@ const {
             <div class="hidden md:flex items-center gap-8">
               <nav class="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                 <ul class="flex space-x-8">
-                  <li>
-                    <a
-                      href="/introduction"
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Introduction</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href="/machine-learning"
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Machine Learning</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href="/deep-learning"
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Deep Learning</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href="/generative-ai"
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Generative AI</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href="/tools-frameworks"
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Tools & Frameworks</a
-                    >
-                  </li>
+                  {
+                    primaryNavItems.map((item) => (
+                      <li>
+                        <a
+                          href={item.href}
+                          class="hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        >
+                          {item.label}
+                        </a>
+                      </li>
+                    ))
+                  }
                 </ul>
               </nav>
               <div
