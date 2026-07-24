@@ -12,6 +12,13 @@ const {
 } = Astro.props;
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+const primaryNavItems = [
+  { label: "Introduction", href: `${base}/introduction/index` },
+  { label: "Machine Learning", href: `${base}/machine-learning/index` },
+  { label: "Deep Learning", href: `${base}/deep-learning/index` },
+  { label: "Generative AI", href: `${base}/generative-ai/index` },
+  { label: "Tools & Frameworks", href: `${base}/tools-frameworks/index` },
+];
 ---
 
 <!doctype html>
@@ -79,41 +86,18 @@ const base = import.meta.env.BASE_URL.replace(/\/$/, "");
             <div class="hidden md:flex items-center gap-8">
               <nav class="text-sm font-medium text-zinc-600 dark:text-zinc-400">
                 <ul class="flex space-x-8">
-                  <li>
-                    <a
-                      href={`${base}/introduction`}
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Introduction</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href={`${base}/machine-learning`}
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Machine Learning</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href={`${base}/deep-learning`}
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Deep Learning</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href={`${base}/generative-ai`}
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Generative AI</a
-                    >
-                  </li>
-                  <li>
-                    <a
-                      href={`${base}/tools-frameworks`}
-                      class="hover:text-zinc-900 dark:hover:text-white transition-colors"
-                      >Tools & Frameworks</a
-                    >
-                  </li>
+                  {
+                    primaryNavItems.map((item) => (
+                      <li>
+                        <a
+                          href={item.href}
+                          class="hover:text-zinc-900 dark:hover:text-white transition-colors"
+                        >
+                          {item.label}
+                        </a>
+                      </li>
+                    ))
+                  }
                 </ul>
               </nav>
               <div
