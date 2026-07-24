@@ -10,6 +10,8 @@ const {
   title,
   description = "My personal journey and notes on learning Artificial Intelligence.",
 } = Astro.props;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 ---
 
 <!doctype html>
@@ -18,7 +20,7 @@ const {
     <meta charset="UTF-8" />
     <meta name="description" content={description} />
     <meta name="viewport" content="width=device-width" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
     <meta name="generator" content={Astro.generator} />
     <title>{title}</title>
     <script is:inline>
@@ -54,7 +56,7 @@ const {
           <div class="py-4 flex items-center justify-between">
             <a
               class="flex items-center gap-2 text-xl font-bold tracking-tight text-zinc-900 dark:text-white"
-              href="/"
+              href={`${base}/`}
             >
               <div
                 class="w-8 h-8 rounded-lg bg-linear-to-br from-emerald-400 to-cyan-500 flex items-center justify-center"
@@ -79,35 +81,35 @@ const {
                 <ul class="flex space-x-8">
                   <li>
                     <a
-                      href="/introduction"
+                      href={`${base}/introduction`}
                       class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Introduction</a
                     >
                   </li>
                   <li>
                     <a
-                      href="/machine-learning"
+                      href={`${base}/machine-learning`}
                       class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Machine Learning</a
                     >
                   </li>
                   <li>
                     <a
-                      href="/deep-learning"
+                      href={`${base}/deep-learning`}
                       class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Deep Learning</a
                     >
                   </li>
                   <li>
                     <a
-                      href="/generative-ai"
+                      href={`${base}/generative-ai`}
                       class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Generative AI</a
                     >
                   </li>
                   <li>
                     <a
-                      href="/tools-frameworks"
+                      href={`${base}/tools-frameworks`}
                       class="hover:text-zinc-900 dark:hover:text-white transition-colors"
                       >Tools & Frameworks</a
                     >
