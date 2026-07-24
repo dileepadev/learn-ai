@@ -11,18 +11,18 @@ Machine learning (ML) is a subset of artificial intelligence (AI) that focuses o
 
 ## Topics
 
-- [Types of Machine Learning](/machine-learning/types-of-machine-learning)
-- [Supervised Learning](/machine-learning/supervised-learning)
-- [Unsupervised Learning](/machine-learning/unsupervised-learning)
-- [Reinforcement Learning](/machine-learning/reinforcement-learning)
-- [NLP Fundamentals](/machine-learning/nlp-fundamentals)
-- [MLOps Introduction](/machine-learning/introduction-to-mlops)
-- [Model Deployment](/machine-learning/model-deployment-and-serving)
-- [Dataset Curation](/machine-learning/dataset-curation-best-practices)
-- [Evaluation Metrics](/machine-learning/evaluation-metrics)
-- [Model Distillation](/machine-learning/model-distillation-explained)
-- [Synthetic Data Generation](/machine-learning/synthetic-data-generation)
-- [Federated Learning](/machine-learning/introduction-to-federated-learning)
+- [Types of Machine Learning](types-of-machine-learning)
+- [Supervised Learning](supervised-learning)
+- [Unsupervised Learning](unsupervised-learning)
+- [Reinforcement Learning](reinforcement-learning)
+- [NLP Fundamentals](nlp-fundamentals)
+- [MLOps Introduction](introduction-to-mlops)
+- [Model Deployment](model-deployment-and-serving)
+- [Dataset Curation](dataset-curation-best-practices)
+- [Evaluation Metrics](evaluation-metrics)
+- [Model Distillation](model-distillation-explained)
+- [Synthetic Data Generation](synthetic-data-generation)
+- [Federated Learning](introduction-to-federated-learning)
 
 ### Key Concepts
 
