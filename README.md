@@ -8,7 +8,8 @@ Contributions are welcome! Please read the [Contributing Guide](CONTRIBUTING.md)
 
 ## Disclaimer
 
-Content is provided for learning purposes and may contain errors or become outdated. Please use your own judgment.
+> [!IMPORTANT]
+> This repository is for educational purposes only. Content may contain errors or become outdated. Always verify information and use your own judgment when applying AI concepts.
 
 ## License
 
