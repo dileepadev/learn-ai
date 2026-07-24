@@ -1,15 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import path from 'node:path';
 
 import {
   getDocDirectory,
   rewriteDocLink,
 } from './rewriteDocLinks.js';
 
-const docsRoot = '/repo/src/content/docs';
+const docsRoot = path.join(path.sep, 'repo', 'src', 'content', 'docs');
 
 test('getDocDirectory returns null for files outside the docs root', () => {
-  assert.equal(getDocDirectory('/repo/src/pages/index.astro', docsRoot), null);
+  assert.equal(
+    getDocDirectory(path.join(path.sep, 'repo', 'src', 'pages', 'index.astro'), docsRoot),
+    null,
+  );
 });
 
 test('rewriteDocLink prefixes the base path for section index links', () => {

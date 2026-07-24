@@ -23,17 +23,23 @@ function rewriteInternalDocLinks() {
       return;
     }
 
-    const visit = (node) => {
+    const nodes = [tree];
+
+    while (nodes.length > 0) {
+      const node = nodes.pop();
+
+      if (!node) {
+        continue;
+      }
+
       if (node.type === 'link' && typeof node.url === 'string') {
         node.url = rewriteDocLink(node.url, currentDir, base);
       }
 
       if (Array.isArray(node.children)) {
-        node.children.forEach(visit);
+        nodes.push(...node.children);
       }
-    };
-
-    visit(tree);
+    }
   };
 }
 
