@@ -14,7 +14,7 @@ const docsRoot = path.join(
   'docs',
 );
 
-const INTERNAL_LINK_PATTERN = /^(?:[a-z]+:|\/|#|\?)/i;
+const ABSOLUTE_LINK_PATTERN = /^(?:[a-z]+:|\/|#|\?)/i;
 
 function rewriteInternalDocLinks() {
   return (tree, file) => {
@@ -35,7 +35,8 @@ function rewriteInternalDocLinks() {
       if (node.type === 'link' && typeof node.url === 'string') {
         const url = node.url.trim();
 
-        if (!INTERNAL_LINK_PATTERN.test(url)) {
+        if (!ABSOLUTE_LINK_PATTERN.test(url)) {
+          // Match: pathname, optional query string, optional hash.
           const match = url.match(/^([^?#]+)(\?[^#]*)?(#.*)?$/);
 
           if (match) {
