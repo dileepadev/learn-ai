@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - copilot/prepare-astro-project-for-deployment
   workflow_dispatch:
 
 permissions:
