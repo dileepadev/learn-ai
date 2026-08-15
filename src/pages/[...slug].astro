@@ -1,25 +1,7 @@
 ---
 import { getCollection, render } from "astro:content";
 import Layout from "../layouts/Layout.astro";
-
-const CATEGORY_LABELS: Record<string, string> = {
-  introduction: "Introduction to AI",
-  "machine-learning": "Machine Learning",
-  "deep-learning": "Deep Learning",
-  "nlp-llm": "NLP & LLMs",
-  "computer-vision": "Computer Vision",
-  "generative-ai": "Generative AI",
-  "reinforcement-learning": "Reinforcement Learning",
-  "ai-ethics-governance": "AI Ethics & Governance",
-  "tools-frameworks": "Tools & Frameworks",
-  general: "General",
-};
-
-const CATEGORY_ORDER = Object.keys(CATEGORY_LABELS);
-
-function categoryOf(id: string) {
-  return id.includes("/") ? id.split("/")[0] : "general";
-}
+import { CATEGORY_ORDER, categoryOf, labelFor } from "../utils/categories";
 
 function groupByCategory(docs: Awaited<ReturnType<typeof getCollection<"docs">>>) {
   const groups = new Map<string, typeof docs>();
@@ -46,7 +28,7 @@ function groupByCategory(docs: Awaited<ReturnType<typeof getCollection<"docs">>>
 
   return orderedCategories.map((category) => ({
     category,
-    label: CATEGORY_LABELS[category] ?? category,
+    label: labelFor(category),
     docs: groups.get(category)!,
   }));
 }
