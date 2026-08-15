@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from "astro:content";
 import Layout from "../layouts/Layout.astro";
+import DocsNav from "../components/DocsNav.astro";
 import { CATEGORY_ORDER, categoryOf, labelFor } from "../utils/categories";
 
 function groupByCategory(docs: Awaited<ReturnType<typeof getCollection<"docs">>>) {
@@ -56,27 +57,12 @@ const navGroups = groupByCategory(allDocs);
           <h3 class="font-semibold text-zinc-900 dark:text-white mb-4">
             Navigation
           </h3>
-          {
-            navGroups.map((group) => (
-              <div class="mb-6">
-                <h4 class="text-xs font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500 mb-2">
-                  {group.label}
-                </h4>
-                <ul class="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
-                  {group.docs.map((doc) => (
-                    <li>
-                      <a
-                        href={`${base}/${doc.id}`}
-                        class={`transition-colors ${entry.id === doc.id ? "text-emerald-500 dark:text-emerald-400 font-semibold" : "hover:text-zinc-900 dark:hover:text-white"}`}
-                      >
-                        {doc.data.title}
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))
-          }
+          <DocsNav
+            navGroups={navGroups}
+            currentId={entry.id}
+            base={base}
+            instanceId="desktop"
+          />
         </nav>
       </aside>
 
