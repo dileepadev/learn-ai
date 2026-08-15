@@ -47,6 +47,16 @@ const { Content } = await render(entry);
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 const navGroups = groupByCategory(allDocs);
+
+const currentGroup = navGroups.find(
+  (group) => group.category === categoryOf(entry.id),
+)!;
+const currentIndex = currentGroup.docs.findIndex((doc) => doc.id === entry.id);
+const prevDoc = currentIndex > 0 ? currentGroup.docs[currentIndex - 1] : null;
+const nextDoc =
+  currentIndex >= 0 && currentIndex < currentGroup.docs.length - 1
+    ? currentGroup.docs[currentIndex + 1]
+    : null;
 ---
 
 <Layout title={entry.data.title} description={entry.data.description}>
@@ -131,12 +141,70 @@ const navGroups = groupByCategory(allDocs);
         </nav>
       </aside>
 
-      <article
-        class="prose dark:prose-invert prose-zinc prose-a:text-emerald-500 dark:prose-a:text-emerald-400 prose-a:hover:text-emerald-600 dark:prose-a:hover:text-emerald-300 max-w-3xl mx-auto lg:mx-0"
-      >
-        <h1>{entry.data.title}</h1>
-        <Content />
-      </article>
+      <div class="w-full max-w-3xl mx-auto lg:mx-0">
+        <nav
+          aria-label="Breadcrumb"
+          class="mb-4 text-sm text-zinc-500 dark:text-zinc-400"
+        >
+          {
+            currentGroup.docs[0]?.id.endsWith("/index") ? (
+              <a
+                href={`${base}/${currentGroup.docs[0].id}`}
+                class="hover:text-zinc-900 dark:hover:text-white transition-colors"
+              >
+                {currentGroup.label}
+              </a>
+            ) : (
+              <span>{currentGroup.label}</span>
+            )
+          }
+        </nav>
+
+        <article
+          class="prose dark:prose-invert prose-zinc prose-a:text-emerald-500 dark:prose-a:text-emerald-400 prose-a:hover:text-emerald-600 dark:prose-a:hover:text-emerald-300 max-w-none"
+        >
+          <h1>{entry.data.title}</h1>
+          <Content />
+        </article>
+
+        {
+          (prevDoc || nextDoc) && (
+            <nav
+              aria-label="Article navigation"
+              class="mt-12 grid grid-cols-1 sm:grid-cols-2 gap-4 border-t border-zinc-200 dark:border-white/10 pt-8"
+            >
+              {prevDoc ? (
+                <a
+                  href={`${base}/${prevDoc.id}`}
+                  class="group rounded-lg border border-zinc-200 dark:border-white/10 p-4 hover:border-emerald-500/50 dark:hover:border-emerald-400/50 transition-colors"
+                >
+                  <span class="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    ← Previous
+                  </span>
+                  <p class="mt-1 text-sm font-semibold text-zinc-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
+                    {prevDoc.data.title}
+                  </p>
+                </a>
+              ) : (
+                <div />
+              )}
+              {nextDoc && (
+                <a
+                  href={`${base}/${nextDoc.id}`}
+                  class="group rounded-lg border border-zinc-200 dark:border-white/10 p-4 text-right hover:border-emerald-500/50 dark:hover:border-emerald-400/50 transition-colors sm:col-start-2"
+                >
+                  <span class="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    Next →
+                  </span>
+                  <p class="mt-1 text-sm font-semibold text-zinc-900 dark:text-white group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors">
+                    {nextDoc.data.title}
+                  </p>
+                </a>
+              )}
+            </nav>
+          )
+        }
+      </div>
     </div>
   </div>
 </Layout>
