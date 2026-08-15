@@ -1,45 +1,66 @@
 ---
+import { getCollection } from "astro:content";
 import Layout from "../layouts/Layout.astro";
+import {
+  CATEGORY_ORDER,
+  CATEGORY_LABELS,
+  CATEGORY_DESCRIPTIONS,
+  categoryOf,
+} from "../utils/categories";
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, "");
 
-const features = [
-  {
-    name: "Introduction to AI",
-    description:
-      "Start your journey here. Learn what Artificial Intelligence is, its history, and its core concepts.",
-    href: `${base}/introduction/index`,
-    icon: `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>`,
-  },
-  {
-    name: "Machine Learning",
-    description:
-      "Dive into the fundamentals of Machine Learning, including supervised and unsupervised learning algorithms, model evaluation, and feature engineering.",
-    href: `${base}/machine-learning/index`,
-    icon: `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`,
-  },
-  {
-    name: "Deep Learning",
-    description:
-      "Explore neural networks, backpropagation, CNNs for image processing, and RNNs for sequence data.",
-    href: `${base}/deep-learning/index`,
-    icon: `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.438 4.438 0 002.946-2.946 4.5 4.5 0 00-1.189-1.36z" /></svg>`,
-  },
-  {
-    name: "Generative AI",
-    description:
-      "Learn about Large Language Models (LLMs), Transformers, Diffusion models, and how to build applications using them.",
-    href: `${base}/generative-ai/index`,
-    icon: `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg>`,
-  },
-  {
-    name: "Tools & Frameworks",
-    description:
-      "Get hands-on with popular AI tools and frameworks like PyTorch, TensorFlow, Scikit-learn, and Hugging Face.",
-    href: `${base}/tools-frameworks/index`,
-    icon: `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" /></svg>`,
-  },
+const docs = await getCollection("docs");
+const totalArticles = docs.length;
+const categoryCounts = new Map<string, number>();
+const categoryDocs = new Map<string, { id: string; title: string }[]>();
+for (const doc of docs) {
+  const category = categoryOf(doc.id);
+  categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
+  const list = categoryDocs.get(category) ?? [];
+  list.push({ id: doc.id, title: doc.data.title });
+  categoryDocs.set(category, list);
+}
+const totalCategories = categoryCounts.size;
+
+const categoryHrefs = new Map<string, string>();
+for (const [category, list] of categoryDocs) {
+  list.sort((a, b) => {
+    if (a.id.endsWith("/index")) return -1;
+    if (b.id.endsWith("/index")) return 1;
+    return a.title.localeCompare(b.title);
+  });
+  categoryHrefs.set(category, `${base}/${list[0].id}`);
+}
+
+const stats = [
+  { label: "Articles", value: totalArticles.toLocaleString() },
+  { label: "Categories", value: totalCategories.toString() },
+  { label: "Free & Open Source", value: "100%" },
 ];
+
+const CATEGORY_ICONS: Record<string, string> = {
+  introduction: `<path stroke-linecap="round" stroke-linejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />`,
+  "machine-learning": `<path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />`,
+  "deep-learning": `<path stroke-linecap="round" stroke-linejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-1.757 4.306 4.438 4.438 0 002.946-2.946 4.5 4.5 0 00-1.189-1.36z" />`,
+  "nlp-llm": `<path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />`,
+  "computer-vision": `<path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />`,
+  "generative-ai": `<path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />`,
+  "reinforcement-learning": `<path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />`,
+  "ai-ethics-governance": `<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />`,
+  "tools-frameworks": `<path stroke-linecap="round" stroke-linejoin="round" d="M14.25 9.75L16.5 12l-2.25 2.25m-4.5 0L7.5 12l2.25-2.25M6 20.25h12A2.25 2.25 0 0020.25 18V6A2.25 2.25 0 0018 3.75H6A2.25 2.25 0 003.75 6v12A2.25 2.25 0 006 20.25z" />`,
+  general: `<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" />`,
+};
+
+const features = CATEGORY_ORDER.filter((category) =>
+  categoryCounts.has(category),
+).map((category) => ({
+  name: CATEGORY_LABELS[category],
+  description: CATEGORY_DESCRIPTIONS[category],
+  count: categoryCounts.get(category) ?? 0,
+  href: categoryHrefs.get(category)!,
+  icon: `<svg class="h-6 w-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">${CATEGORY_ICONS[category] ?? ""}</svg>`,
+}));
 ---
 
 <Layout title="Learn AI - My Journey into Artificial Intelligence">
@@ -71,26 +92,11 @@ const features = [
     >
       <div class="mx-auto max-w-2xl lg:mx-0 lg:max-w-xl lg:shrink-0 lg:pt-8">
         <div class="mt-24 sm:mt-32 lg:mt-16">
-          <div class="inline-flex space-x-6">
+          <div class="inline-flex">
             <span
               class="rounded-full bg-emerald-500/10 px-3 py-1 text-sm font-semibold leading-6 text-emerald-400 ring-1 ring-inset ring-emerald-500/20"
-              >What's new</span
             >
-            <span
-              class="inline-flex items-center space-x-2 text-sm font-medium leading-6 text-zinc-600 dark:text-zinc-400"
-            >
-              <span>Just shipped v1.0</span>
-              <svg
-                class="h-5 w-5 text-zinc-400 dark:text-zinc-500"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fill-rule="evenodd"
-                  d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                  clip-rule="evenodd"></path>
-              </svg>
+              {totalArticles.toLocaleString()} articles and growing
             </span>
           </div>
         </div>
@@ -106,7 +112,7 @@ const features = [
         </p>
         <div class="mt-10 flex items-center gap-x-6">
           <a
-            href={`${base}/introduction/index`}
+            href={categoryHrefs.get("introduction")}
             class="rounded-md bg-emerald-500 px-3.5 py-2.5 text-sm font-semibold text-zinc-950 shadow-sm hover:bg-emerald-400 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-500 transition-colors"
           >
             Start Learning
@@ -118,6 +124,20 @@ const features = [
             View on GitHub <span aria-hidden="true">→</span>
           </a>
         </div>
+        <dl class="mt-16 grid grid-cols-3 gap-6 border-t border-zinc-200 dark:border-white/10 pt-8">
+          {
+            stats.map((stat) => (
+              <div>
+                <dt class="text-sm text-zinc-500 dark:text-zinc-400">
+                  {stat.label}
+                </dt>
+                <dd class="mt-1 text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
+                  {stat.value}
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
       </div>
       <div
         class="mx-auto mt-16 flex max-w-2xl sm:mt-24 lg:ml-10 lg:mr-0 lg:mt-0 lg:max-w-none lg:flex-none xl:ml-32"
@@ -157,27 +177,30 @@ const features = [
           modern Artificial Intelligence.
         </p>
       </div>
-      <div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-4xl">
-        <dl
-          class="grid max-w-xl grid-cols-1 gap-x-8 gap-y-10 lg:max-w-none lg:grid-cols-2 lg:gap-y-16"
-        >
+      <div class="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+        <dl class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {
             features.map((feature) => (
-              <div class="relative pl-16 group">
-                <dt class="text-base font-semibold leading-7 text-zinc-900 dark:text-white">
-                  <div class="absolute left-0 top-0 flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900/5 dark:bg-white/5 ring-1 ring-zinc-900/10 dark:ring-white/10 group-hover:bg-emerald-500/10 group-hover:ring-emerald-500/20 transition-all">
+              <div class="group relative rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/5 p-6 hover:border-emerald-500/50 dark:hover:border-emerald-400/50 transition-colors">
+                <dt class="flex items-center justify-between">
+                  <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-zinc-900/5 dark:bg-white/5 ring-1 ring-zinc-900/10 dark:ring-white/10 group-hover:bg-emerald-500/10 group-hover:ring-emerald-500/20 transition-all">
                     <Fragment set:html={feature.icon} />
                   </div>
+                  <span class="text-xs font-medium text-zinc-400 dark:text-zinc-500">
+                    {feature.count} articles
+                  </span>
+                </dt>
+                <dd class="mt-4">
                   <a
                     href={feature.href}
-                    class="hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors"
+                    class="text-base font-semibold text-zinc-900 dark:text-white hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors"
                   >
                     {feature.name}
                     <span class="absolute inset-0" />
                   </a>
-                </dt>
-                <dd class="mt-2 text-base leading-7 text-zinc-600 dark:text-zinc-400">
-                  {feature.description}
+                  <p class="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+                    {feature.description}
+                  </p>
                 </dd>
               </div>
             ))
