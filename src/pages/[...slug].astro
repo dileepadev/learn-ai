@@ -51,6 +51,71 @@ const navGroups = groupByCategory(allDocs);
 
 <Layout title={entry.data.title} description={entry.data.description}>
   <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+    <div class="lg:hidden mb-6">
+      <button
+        id="docs-drawer-open"
+        type="button"
+        class="flex w-full items-center justify-between gap-2 rounded-lg border border-zinc-200 dark:border-white/10 bg-zinc-50 dark:bg-white/5 px-4 py-2.5 text-sm font-medium text-zinc-700 dark:text-zinc-200"
+      >
+        <span class="flex items-center gap-2">
+          <svg
+            class="w-4 h-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            stroke-width="2"
+            ><path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3.75 6.75h16.5M3.75 12h16.5M3.75 17.25h16.5"></path></svg
+          >
+          Browse all articles
+        </span>
+        <span class="text-zinc-400 dark:text-zinc-500">{navGroups.reduce((n, g) => n + g.docs.length, 0)}</span>
+      </button>
+    </div>
+
+    <dialog
+      id="docs-drawer"
+      class="m-0 h-dvh max-h-none w-full max-w-sm bg-white dark:bg-zinc-950 p-0 backdrop:bg-zinc-950/60 backdrop:backdrop-blur-sm open:animate-none"
+    >
+      <div class="flex h-full flex-col">
+        <div
+          class="flex items-center justify-between border-b border-zinc-200 dark:border-white/10 px-4 py-4"
+        >
+          <h3 class="font-semibold text-zinc-900 dark:text-white">
+            Navigation
+          </h3>
+          <button
+            id="docs-drawer-close"
+            type="button"
+            class="p-2 -mr-2 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+            aria-label="Close navigation"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              stroke-width="1.75"
+              ><path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M6 18L18 6M6 6l12 12"></path></svg
+            >
+          </button>
+        </div>
+        <div class="flex-1 overflow-y-auto px-4 py-4">
+          <DocsNav
+            navGroups={navGroups}
+            currentId={entry.id}
+            base={base}
+            instanceId="mobile"
+          />
+        </div>
+      </div>
+    </dialog>
+
     <div class="flex flex-col lg:flex-row gap-12">
       <aside class="hidden lg:block w-64 shrink-0">
         <nav class="sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto pr-2">
@@ -75,3 +140,23 @@ const navGroups = groupByCategory(allDocs);
     </div>
   </div>
 </Layout>
+
+<style>
+  #docs-drawer {
+    position: fixed;
+    inset: 0 auto 0 0;
+    margin: 0;
+  }
+</style>
+
+<script>
+  const drawer = document.getElementById("docs-drawer") as HTMLDialogElement | null;
+  const openBtn = document.getElementById("docs-drawer-open");
+  const closeBtn = document.getElementById("docs-drawer-close");
+
+  openBtn?.addEventListener("click", () => drawer?.showModal());
+  closeBtn?.addEventListener("click", () => drawer?.close());
+  drawer?.addEventListener("click", (event) => {
+    if (event.target === drawer) drawer.close();
+  });
+</script>
